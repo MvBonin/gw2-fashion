@@ -37,17 +37,15 @@ export async function POST(request: Request) {
 
     const trimmedKey = apiKey.trim();
 
-    // Basic format validation (GW2 API keys are UUIDs)
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(trimmedKey)) {
+    // Basic format validation - check if it looks like a valid key (not empty, reasonable length)
+    if (trimmedKey.length < 20 || trimmedKey.length > 100) {
       return NextResponse.json(
         { error: "Invalid API key format" },
         { status: 400 }
       );
     }
 
-    // Check token info and scopes
+    // Check token info and scopes - let GW2 API validate the actual format
     const tokenInfoResponse = await fetch(
       `${GW2_API_BASE_URL}/v2/tokeninfo?access_token=${trimmedKey}`
     );

@@ -25,7 +25,7 @@ export default function WelcomePage() {
   const [keyError, setKeyError] = useState<string | null>(null);
 
   // Step 3: Visibility
-  const [gw2AccountNamePublic, setGw2AccountNamePublic] = useState(false);
+  const [gw2AccountNamePublic, setGw2AccountNamePublic] = useState(true);
 
   // Check if user is authenticated and has completed welcome
   useEffect(() => {
@@ -40,15 +40,20 @@ export default function WelcomePage() {
       }
 
       // Check if user has already completed welcome
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
+      // If profile exists and welcome is complete, redirect
       if (profile && profile.username_manually_set) {
         // User has completed welcome, redirect to home
         router.push("/");
+      }
+      // If profileError and it's not a "not found" error, log it
+      else if (profileError && profileError.code !== "PGRST116") {
+        console.error("Error checking welcome status:", profileError);
       }
     };
     checkAuth();
@@ -148,21 +153,42 @@ export default function WelcomePage() {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error("Failed to parse response as JSON:", jsonError);
+        setError("Unexpected response from server");
+        return;
+      }
 
       if (response.ok && data.success) {
-        router.push("/");
+        // Use replace instead of push to avoid back button issues
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          router.replace("/");
+        }, 100);
       } else {
-        setError(data.error || "Failed to complete welcome");
+        const errorMessage = data?.error || `Failed to complete welcome (${response.status})`;
+        const errorDetails = data?.details ? `: ${data.details}` : "";
+        setError(`${errorMessage}${errorDetails}`);
+        console.error("Welcome completion error:", {
+          error: errorMessage,
+          details: data?.details,
+          status: response.status,
+          fullData: data,
+        });
       }
     } catch (err) {
-      setError("Error completing welcome");
+      const errorMessage = err instanceof Error ? err.message : "Error completing welcome";
+      setError(errorMessage);
+      console.error("Welcome completion exception:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 1) {
       if (!usernameValid) {
         setUsernameError("Please enter a valid username");
@@ -175,7 +201,8 @@ export default function WelcomePage() {
         setCurrentStep(3);
       } else {
         // If no API key or key not validated, complete welcome directly
-        handleComplete();
+        // (API key is optional, so user can proceed even if validation failed)
+        await handleComplete();
       }
     }
   };
@@ -363,10 +390,10 @@ export default function WelcomePage() {
                 {isLoading ? (
                   <>
                     <span className="loading loading-spinner" />
-                    Completing...
+                    Starting...
                   </>
                 ) : (
-                  "Complete Setup"
+                  "Start with Fashion"
                 )}
               </button>
             ) : (
@@ -380,7 +407,7 @@ export default function WelcomePage() {
                   isLoading
                 }
               >
-                Next
+                {currentStep === 2 && !gw2ApiKey.trim() ? "Skip for now" : "Next"}
               </button>
             )}
           </div>

@@ -111,8 +111,15 @@ export async function POST(request: Request) {
       }
     }
 
-    // Prepare update data
-    const updateData: {
+    // Check if user profile exists
+    const { data: existingProfile } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // Prepare data
+    const profileData: {
       username: string;
       username_manually_set: boolean;
       gw2_api_key?: string | null;
@@ -125,25 +132,85 @@ export async function POST(request: Request) {
 
     // Add GW2 data if provided
     if (gw2ApiKey) {
-      updateData.gw2_api_key = gw2ApiKey;
+      profileData.gw2_api_key = gw2ApiKey;
     }
     if (gw2AccountName) {
-      updateData.gw2_account_name = gw2AccountName;
+      profileData.gw2_account_name = gw2AccountName;
     }
     if (typeof gw2AccountNamePublic === "boolean") {
-      updateData.gw2_account_name_public = gw2AccountNamePublic;
+      profileData.gw2_account_name_public = gw2AccountNamePublic;
     }
 
-    // Update user profile
-    const { error: updateError } = await supabase
-      .from("users")
-      .update(updateData)
-      .eq("id", user.id);
+    // Update or insert user profile
+    let dbError;
+    if (existingProfile) {
+      // User exists, update
+      const { data: updateData, error: updateError } = await supabase
+        .from("users")
+        .update(profileData)
+        .eq("id", user.id)
+        .select();
+      dbError = updateError;
+      
+      if (dbError) {
+        // Check if it's a unique constraint violation (username already taken)
+        if (dbError.code === "23505" || dbError.message?.includes("unique") || dbError.message?.includes("duplicate")) {
+          return NextResponse.json(
+            { error: "Username is already taken" },
+            { status: 409 }
+          );
+        }
+      }
+    } else {
+      // User doesn't exist, insert (shouldn't happen normally, but handle it)
+      // Note: This might fail due to RLS if there's no INSERT policy
+      const { data: insertData, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          id: user.id,
+          email: user.email,
+          ...profileData,
+        })
+        .select();
+      dbError = insertError;
+      
+      if (dbError) {
+        // If insert fails, try update instead (user might have been created by trigger)
+        const { error: retryUpdateError } = await supabase
+          .from("users")
+          .update(profileData)
+          .eq("id", user.id);
+        dbError = retryUpdateError;
+      }
+    }
 
-    if (updateError) {
-      console.error("Error updating user profile:", updateError);
+    if (dbError) {
+      console.error("Error saving user profile:", {
+        error: dbError,
+        code: dbError.code,
+        message: dbError.message,
+        details: dbError.details,
+        hint: dbError.hint,
+        existingProfile: !!existingProfile,
+        userId: user.id,
+        profileData,
+      });
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to save profile";
+      if (dbError.code === "23505") {
+        errorMessage = "Username is already taken";
+      } else if (dbError.message?.includes("permission") || dbError.message?.includes("policy")) {
+        errorMessage = "Permission denied. Please contact support.";
+      } else if (dbError.message) {
+        errorMessage = dbError.message;
+      }
+      
       return NextResponse.json(
-        { error: "Failed to update profile" },
+        { 
+          error: errorMessage,
+          details: dbError.details || dbError.hint,
+        },
         { status: 500 }
       );
     }
