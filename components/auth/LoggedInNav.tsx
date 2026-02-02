@@ -1,40 +1,42 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { useUser } from "@/lib/hooks/useUser";
+import { clearUserProfileCache } from "@/lib/utils/userCache";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import type { Database } from "@/types/database.types";
 
-export default function UserMenu() {
-  const { user, profile, loading } = useUser();
+type UserProfile = Database["public"]["Tables"]["users"]["Row"];
+
+interface LoggedInNavProps {
+  profile: UserProfile;
+}
+
+export default function LoggedInNav({ profile }: LoggedInNavProps) {
   const router = useRouter();
   const supabase = createClient();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+    try {
+      setIsLoggingOut(true);
+      clearUserProfileCache();
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Logout error:", error);
+      }
+      
+      router.replace("/");
+    } catch (error) {
+      console.error("Unexpected logout error:", error);
+      router.replace("/");
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
-
-  if (loading) {
-    return (
-      <div className="dropdown dropdown-end">
-        <label tabIndex={0} className="btn btn-ghost btn-circle avatar">
-          <div className="w-10 rounded-full">
-            <div className="skeleton w-full h-full rounded-full shrink-0" />
-          </div>
-        </label>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <Link href="/login" className="btn btn-primary">
-        Login
-      </Link>
-    );
-  }
 
   return (
     <div className="dropdown dropdown-end">
@@ -75,11 +77,24 @@ export default function UserMenu() {
           <Link href="/wishlist/templates">Wishlist</Link>
         </li>
         <li>
-          <button type="button" onClick={handleLogout}>
-            Logout
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className={isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}
+          >
+            {isLoggingOut ? (
+              <>
+                <span className="loading loading-spinner loading-xs"></span>
+                Logging out...
+              </>
+            ) : (
+              "Logout"
+            )}
           </button>
         </li>
       </ul>
     </div>
   );
 }
+

@@ -1,8 +1,25 @@
 import Link from "next/link";
 import Image from "next/image";
-import UserMenu from "@/components/auth/UserMenu";
+import { createClient } from "@/lib/supabase/server";
+import LoggedInNav from "@/components/auth/LoggedInNav";
+import LoggedOutNav from "@/components/auth/LoggedOutNav";
 
-export default function Header() {
+export default async function Header() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let profile = null;
+  if (user) {
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    profile = data;
+  }
+
   return (
     <header className="navbar bg-base-100 shadow-lg">
       <div className="flex-none">
@@ -26,7 +43,11 @@ export default function Header() {
         <Link href="/collections" className="btn btn-ghost">
           Collections
         </Link>
-        <UserMenu />
+        {user && profile ? (
+          <LoggedInNav profile={profile} />
+        ) : (
+          <LoggedOutNav />
+        )}
       </div>
     </header>
   );
