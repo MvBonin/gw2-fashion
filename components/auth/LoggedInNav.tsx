@@ -3,9 +3,9 @@
 import { createClient } from "@/lib/supabase/client";
 import { clearUserProfileCache } from "@/lib/utils/userCache";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { User } from "lucide-react";
 import type { Database } from "@/types/database.types";
 
 type UserProfile = Database["public"]["Tables"]["users"]["Row"];
@@ -40,38 +40,20 @@ export default function LoggedInNav({ profile }: LoggedInNavProps) {
 
   return (
     <div className="dropdown dropdown-end">
-      <label tabIndex={0} className="btn btn-ghost btn-circle avatar">
-        <div className="w-10 rounded-full">
-          {profile?.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt={profile.username}
-              width={40}
-              height={40}
-              className="rounded-full"
-            />
-          ) : (
-            <div className="bg-primary text-primary-content w-full h-full flex items-center justify-center rounded-full text-lg font-medium">
-              {profile?.username?.[0]?.toUpperCase() ?? "?"}
-            </div>
-          )}
-        </div>
+      <label tabIndex={0} className="btn btn-ghost normal-case flex items-center gap-2">
+        <User className="w-5 h-5" />
+        <span>{profile?.username}</span>
       </label>
       <ul
         tabIndex={0}
         className="mt-3 z-1 p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
       >
-        <li className="menu-title">
-          <span>{profile?.username}</span>
-        </li>
+
         <li>
-          <Link href={`/profile/${profile?.username?.toLowerCase() ?? ""}`}>Profile</Link>
+          <Link href={`/profile/${profile?.username?.toLowerCase() ?? ""}`}>My Fashion / Profile</Link>
         </li>
         <li>
           <Link href="/profile/settings">Settings</Link>
-        </li>
-        <li>
-          <Link href="/templates/upload">Upload Fashion-Template</Link>
         </li>
         <li>
           <button

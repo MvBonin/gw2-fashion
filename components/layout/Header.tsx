@@ -36,15 +36,15 @@ export default async function Header() {
         </Link>
       </div>
       <div className="flex-1"></div>
-      <div className="flex-none gap-2">
+      <div className="flex-none flex items-center gap-2">
+        <Link href="/template/new" className="btn btn-primary btn-ghost">
+          Add Fashion
+        </Link>
         <Link href="/" className="btn btn-ghost">
           Fashion
         </Link>
         <Link href="/collections" className="btn btn-ghost">
           Collections
-        </Link>
-        <Link href="/template/new" className="btn btn-primary">
-          Add Template
         </Link>
         {user && profile ? (
           <LoggedInNav profile={profile} />
