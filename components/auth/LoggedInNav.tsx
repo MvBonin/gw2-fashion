@@ -65,16 +65,13 @@ export default function LoggedInNav({ profile }: LoggedInNavProps) {
           <span>{profile?.username}</span>
         </li>
         <li>
-          <Link href={`/profile/${profile?.username ?? ""}`}>Profile</Link>
+          <Link href={`/profile/${profile?.username?.toLowerCase() ?? ""}`}>Profile</Link>
         </li>
         <li>
           <Link href="/profile/settings">Settings</Link>
         </li>
         <li>
-          <Link href="/templates/upload">Upload Template</Link>
-        </li>
-        <li>
-          <Link href="/wishlist/templates">Wishlist</Link>
+          <Link href="/templates/upload">Upload Fashion-Template</Link>
         </li>
         <li>
           <button

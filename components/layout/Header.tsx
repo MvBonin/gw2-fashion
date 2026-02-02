@@ -26,10 +26,10 @@ export default async function Header() {
         <Link href="/" className="btn btn-ghost text-xl flex items-center gap-2 normal-case">
           <Image
             src="/icon.png"
-            alt="GW2 Fashion Logo"
-            width={32}
-            height={32}
-            className="w-8 h-8 flex-shrink-0"
+            alt="gw2-fashion.com Logo"
+            width={265}
+            height={265}
+            className="h-16 w-16 flex-shrink-0"
             priority
           />
           <span>GW2 Fashion</span>
@@ -38,10 +38,13 @@ export default async function Header() {
       <div className="flex-1"></div>
       <div className="flex-none gap-2">
         <Link href="/" className="btn btn-ghost">
-          Browse
+          Fashion
         </Link>
         <Link href="/collections" className="btn btn-ghost">
           Collections
+        </Link>
+        <Link href="/template/new" className="btn btn-primary">
+          Add Template
         </Link>
         {user && profile ? (
           <LoggedInNav profile={profile} />
