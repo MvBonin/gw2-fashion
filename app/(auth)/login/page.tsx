@@ -56,7 +56,7 @@ export default function LoginPage() {
           </button>
 
           <p className="text-xs text-base-content/50 mt-4">
-            Like 90% of the GW2 community already does!
+            This is a community project, not affiliated with ArenaNet. We use Discord to set you up with an account.
           </p>
         </div>
       </div>

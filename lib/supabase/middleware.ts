@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
+import { shouldRedirectToWelcome } from "@/lib/utils/welcome";
+import type { Database } from "@/types/database.types";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
@@ -9,7 +11,7 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     getSupabaseUrl(),
     getSupabaseAnonKey(),
     {
@@ -55,7 +57,37 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Check if user needs welcome
+  const pathname = request.nextUrl.pathname;
+  const isWelcomePage = pathname === "/welcome";
+  const isAuthCallback = pathname === "/auth/callback";
+  const isLoginPage = pathname === "/login";
+  const isApiRoute = pathname.startsWith("/api");
+
+  // If user is authenticated, check welcome status
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    // If user tries to access welcome but has already completed it, redirect to home
+    if (isWelcomePage && profile && !shouldRedirectToWelcome(profile)) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    // If user hasn't completed welcome and is not on welcome page, redirect to welcome
+    if (!isWelcomePage && !isAuthCallback && !isLoginPage && !isApiRoute) {
+      if (shouldRedirectToWelcome(profile)) {
+        return NextResponse.redirect(new URL("/welcome", request.url));
+      }
+    }
+  }
 
   return response;
 }

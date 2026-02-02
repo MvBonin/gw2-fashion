@@ -57,5 +57,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  return response;
+  // Redirect to welcome after successful auth
+  // Middleware will handle redirecting to home if welcome is already complete
+  // Create redirect and copy cookies from the session response
+  const redirectResponse = NextResponse.redirect(`${origin}/welcome`);
+  
+  // Copy all cookies from the session response to maintain authentication
+  response.cookies.getAll().forEach((cookie) => {
+    redirectResponse.cookies.set({
+      name: cookie.name,
+      value: cookie.value,
+      ...cookieOptions,
+    });
+  });
+
+  return redirectResponse;
 }

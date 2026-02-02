@@ -21,6 +21,10 @@ export interface Database {
           display_name: string | null;
           avatar_url: string | null;
           email: string | null;
+          gw2_api_key: string | null;
+          gw2_account_name: string | null;
+          gw2_account_name_public: boolean;
+          username_manually_set: boolean;
           created_at: string;
           updated_at: string;
           last_seen: string;
@@ -32,6 +36,10 @@ export interface Database {
           display_name?: string | null;
           avatar_url?: string | null;
           email?: string | null;
+          gw2_api_key?: string | null;
+          gw2_account_name?: string | null;
+          gw2_account_name_public?: boolean;
+          username_manually_set?: boolean;
           created_at?: string;
           updated_at?: string;
           last_seen?: string;
@@ -43,6 +51,10 @@ export interface Database {
           display_name?: string | null;
           avatar_url?: string | null;
           email?: string | null;
+          gw2_api_key?: string | null;
+          gw2_account_name?: string | null;
+          gw2_account_name_public?: boolean;
+          username_manually_set?: boolean;
           created_at?: string;
           updated_at?: string;
           last_seen?: string;
@@ -50,7 +62,14 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      username_exists: {
+        Args: {
+          check_username: string;
+        };
+        Returns: boolean;
+      };
+    };
     Enums: Record<string, never>;
   };
 }
