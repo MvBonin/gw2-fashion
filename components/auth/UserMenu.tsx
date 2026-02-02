@@ -17,7 +17,15 @@ export default function UserMenu() {
   };
 
   if (loading) {
-    return <div className="skeleton w-10 h-10 rounded-full shrink-0" />;
+    return (
+      <div className="dropdown dropdown-end">
+        <label tabIndex={0} className="btn btn-ghost btn-circle avatar">
+          <div className="w-10 rounded-full">
+            <div className="skeleton w-full h-full rounded-full shrink-0" />
+          </div>
+        </label>
+      </div>
+    );
   }
 
   if (!user) {
