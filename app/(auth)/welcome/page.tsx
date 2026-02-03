@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { isWelcomeComplete } from "@/lib/utils/welcome";
 import type { Database } from "@/types/database.types";
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
@@ -17,6 +18,7 @@ export default function WelcomePage() {
 
   // Step 0: Terms accepted (required before proceeding)
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [profile, setProfile] = useState<UserRow | null>(null);
 
   // Step 1: Username
   const [username, setUsername] = useState("");
@@ -52,15 +54,15 @@ export default function WelcomePage() {
         .eq("id", user.id)
         .maybeSingle();
 
-      const profile = data as UserRow | null;
+      const profileData = data as UserRow | null;
+      setProfile(profileData);
 
-      // If profile exists and welcome is complete, redirect
-      if (profile?.username_manually_set) {
-        // User has completed welcome, redirect to home
+      // If profile exists and welcome is complete (username set + ToS accepted), redirect
+      if (profileData && isWelcomeComplete(profileData)) {
         router.push("/");
+        return;
       }
-      // If profileError and it's not a "not found" error, log it
-      else if (profileError && profileError.code !== "PGRST116") {
+      if (profileError && profileError.code !== "PGRST116") {
         console.error("Error checking welcome status:", profileError);
       }
     };
@@ -215,7 +217,26 @@ export default function WelcomePage() {
     }
   };
 
-  const handleAcceptTerms = () => {
+  const handleAcceptTerms = async () => {
+    // User already has username but never accepted ToS (e.g. legacy account)
+    if (profile?.username_manually_set && profile?.terms_accepted_at == null) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/welcome/accept-terms", { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          router.replace("/");
+          return;
+        }
+        setError(data?.error || "Failed to save. Please try again.");
+      } catch (err) {
+        setError("Something went wrong. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
     setTermsAccepted(true);
     setCurrentStep(1);
   };
@@ -263,10 +284,31 @@ export default function WelcomePage() {
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Terms of Use</h2>
               <p className="text-base-content/80">
-                By continuing, you confirm that you will not upload or share
-                content that is hateful, discriminatory, or illegal. You also
-                confirm that any images you use (e.g. in templates) are either
-                your own (e.g. in-game screenshots) or used with proper rights.
+                By continuing, you accept our{" "}
+                <Link
+                  href="/legal#terms-of-service"
+                  className="link link-primary"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/legal#privacy-policy"
+                  className="link link-primary"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Privacy Policy
+                </Link>
+                , including the use of Umami analytics (anonymised, no consent
+                required) as described there.
+              </p>
+              <p className="text-base-content/80">
+                You also confirm that you will not upload or share content that
+                is hateful, discriminatory, or illegal, and that any images you
+                use (e.g. in templates) are your own or used with proper rights.
                 Violations may lead to content removal and account restrictions.
               </p>
               <p className="text-sm text-base-content/70">
@@ -286,8 +328,16 @@ export default function WelcomePage() {
                   type="button"
                   className="btn btn-primary"
                   onClick={handleAcceptTerms}
+                  disabled={isLoading}
                 >
-                  I Accept
+                  {isLoading ? (
+                    <>
+                      <span className="loading loading-spinner" />
+                      Saving...
+                    </>
+                  ) : (
+                    "I Accept"
+                  )}
                 </button>
               </div>
             </div>

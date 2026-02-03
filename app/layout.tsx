@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import CookieBanner from "@/components/layout/CookieBanner";
+import UmamiIdentify from "@/components/layout/UmamiIdentify";
+import UmamiScript from "@/components/layout/UmamiScript";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +37,8 @@ export default function RootLayout({
       >
         {children}
         <CookieBanner />
+        <UmamiScript />
+        <UmamiIdentify />
       </body>
     </html>
   );

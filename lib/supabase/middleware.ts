@@ -67,6 +67,7 @@ export async function updateSession(request: NextRequest) {
   const isAuthCallback = pathname === "/auth/callback";
   const isLoginPage = pathname === "/login";
   const isApiRoute = pathname.startsWith("/api");
+  const isLegalPage = pathname === "/legal";
 
   // If user is authenticated, check welcome status
   if (user) {
@@ -81,8 +82,9 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    // If user hasn't completed welcome and is not on welcome page, redirect to welcome
-    if (!isWelcomePage && !isAuthCallback && !isLoginPage && !isApiRoute) {
+    // If user hasn't completed welcome and is not on an allowed page, redirect to welcome
+    // Legal is always reachable so users can read ToS/Privacy before accepting
+    if (!isWelcomePage && !isAuthCallback && !isLoginPage && !isApiRoute && !isLegalPage) {
       if (shouldRedirectToWelcome(profile)) {
         return NextResponse.redirect(new URL("/welcome", request.url));
       }

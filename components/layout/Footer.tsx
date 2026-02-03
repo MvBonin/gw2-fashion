@@ -56,6 +56,14 @@ export default function Footer() {
             Legal & Attribution
           </Link>
           <span> · </span>
+          <Link href="/legal#privacy-policy" className="link link-hover text-sm">
+            Privacy Policy
+          </Link>
+          <span> · </span>
+          <Link href="/legal#terms-of-service" className="link link-hover text-sm">
+            Terms of Service
+          </Link>
+          <span> · </span>
           <CookieSettingsTrigger />
         </p>
       </aside>
