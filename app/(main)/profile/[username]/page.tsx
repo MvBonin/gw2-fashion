@@ -15,6 +15,13 @@ type TemplateWithUser = TemplateRow & {
 function templateTagsToNames(tt: TemplateWithUser["template_tags"]): string[] {
   return (tt ?? []).map((x) => x.tags?.name).filter(Boolean) as string[];
 }
+function formatRegistrationDate(isoString: string): string {
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(isoString));
+}
 type ArmorType = "light" | "medium" | "heavy" | null;
 
 interface ProfilePageProps {
@@ -44,7 +51,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   // Since usernames are unique (case-insensitive), we can safely do this
   const { data: usersData, error } = await supabase
     .from("users")
-    .select("id, username, gw2_account_name, gw2_account_name_public, bio")
+    .select("id, username, gw2_account_name, gw2_account_name_public, bio, created_at")
     .limit(1000); // Reasonable limit for small to medium user base
 
   if (error) {
@@ -52,7 +59,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     notFound();
   }
 
-  type UserSelect = Pick<UserProfile, "id" | "username" | "gw2_account_name" | "gw2_account_name_public" | "bio">;
+  type UserSelect = Pick<UserProfile, "id" | "username" | "gw2_account_name" | "gw2_account_name_public" | "bio" | "created_at">;
   const users = (usersData ?? []) as UserSelect[];
 
   // Find user case-insensitively
@@ -64,6 +71,14 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   if (!user) {
     notFound();
   }
+
+  // Total design count (all armor types) for sidebar
+  const { count: totalDesignCount } = await supabase
+    .from("templates")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("active", true);
+  const designCount = totalDesignCount ?? 0;
 
   const selectFields = `
       id,
@@ -134,24 +149,9 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   }
 
   return (
-    <div>
-      <div className="max-w-2xl mx-auto mb-8">
-        <h1 className="text-4xl font-bold mb-4">{user.username}</h1>
-        {user.gw2_account_name_public && user.gw2_account_name && (
-          <div className="mt-4">
-            <p className="text-lg text-base-content/70">
-              GW2-Account: {user.gw2_account_name}
-            </p>
-          </div>
-        )}
-        {user.bio && (
-          <div className="mt-4">
-            <p className="text-base-content/80 whitespace-pre-line">{user.bio}</p>
-          </div>
-        )}
-      </div>
-
-      <section>
+    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+      {/* Left: Templates */}
+      <section className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <h2 className="text-2xl font-semibold">Templates</h2>
           <p className="text-sm text-base-content/60 shrink-0">
@@ -203,6 +203,36 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
           </>
         )}
       </section>
+
+      {/* Right: User card */}
+      <aside className="lg:w-80 shrink-0">
+        <div className="card bg-base-200 border border-base-300">
+          <div className="card-body">
+            <h1 className="card-title text-2xl font-bold break-all">{user.username}</h1>
+            {user.gw2_account_name_public && user.gw2_account_name && (
+              <p className="text-base-content/70 text-sm">
+                GW2-Account: {user.gw2_account_name}
+              </p>
+            )}
+            {user.bio && (
+              <p className="text-base-content/80 whitespace-pre-line text-sm">{user.bio}</p>
+            )}
+            <div className="divider my-2" />
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-baseline">
+                <span className="text-base-content/60 text-sm">Designs</span>
+                <span className="font-semibold">{designCount}</span>
+              </div>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-base-content/60 text-sm shrink-0">Mitglied seit</span>
+                <span className="font-medium text-sm text-right">
+                  {user.created_at ? formatRegistrationDate(user.created_at) : "—"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

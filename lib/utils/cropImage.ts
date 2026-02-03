@@ -1,6 +1,10 @@
 /**
  * Creates a cropped image blob from image URL and pixel crop area (e.g. from react-easy-crop).
  */
+
+/** Portrait aspect ratio for template character screenshots (9:16). */
+export const TEMPLATE_IMAGE_ASPECT = 9 / 16;
+
 export type CropArea = { x: number; y: number; width: number; height: number };
 
 export function createImage(url: string): Promise<HTMLImageElement> {
@@ -41,12 +45,16 @@ export async function getCroppedImg(
   );
 
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Canvas toBlob failed"));
-        return;
-      }
-      resolve(blob);
-    }, "image/jpeg");
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Canvas toBlob failed"));
+          return;
+        }
+        resolve(blob);
+      },
+      "image/jpeg",
+      0.95
+    );
   });
 }

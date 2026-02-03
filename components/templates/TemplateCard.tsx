@@ -83,7 +83,7 @@ export default function TemplateCard({
 
   return (
     <Link href={`/template/${slug}`} className="card bg-base-200 shadow-md hover:shadow-lg transition-shadow compact">
-      <figure className="relative w-full h-28 sm:h-32 bg-base-300">
+      <figure className="relative w-full aspect-[9/16] bg-base-300">
         {image_url ? (
           <Image
             src={image_url}

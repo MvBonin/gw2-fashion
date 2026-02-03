@@ -108,8 +108,8 @@ export default async function TemplateDetailPage({
       </header>
 
       <div className="grid grid-cols-2 max-md:grid-cols-1 gap-8">
-        {/* Left: image */}
-        <div className="relative w-full aspect-square rounded-xl overflow-hidden ring-1 ring-base-300 shadow-lg bg-base-200">
+        {/* Left: image with favourite overlay */}
+        <div className="relative w-full aspect-[9/16] rounded-xl overflow-hidden ring-1 ring-base-300 shadow-lg bg-base-200">
           {template.image_url ? (
             <Image
               src={template.image_url}
@@ -126,6 +126,14 @@ export default async function TemplateDetailPage({
               </svg>
             </div>
           )}
+          <div className="absolute top-3 left-3 z-10">
+            <FavouriteButton
+              templateId={template.id}
+              favouriteCount={template.favourite_count ?? 0}
+              isFavourited={isFavourited}
+              variant="detail"
+            />
+          </div>
         </div>
 
         {/* Right: title, author, description, tags, fashion code, stats */}
@@ -135,12 +143,6 @@ export default async function TemplateDetailPage({
             <span className="badge badge-primary badge-lg capitalize">
               {template.armor_type}
             </span>
-            <FavouriteButton
-              templateId={template.id}
-              favouriteCount={template.favourite_count ?? 0}
-              isFavourited={isFavourited}
-              variant="detail"
-            />
           </div>
           {template.users && (
             <p className="text-base text-base-content/60 mt-1">

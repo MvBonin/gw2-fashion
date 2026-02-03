@@ -4,10 +4,8 @@ import { useState, useCallback, useRef } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import imageCompression from "browser-image-compression";
 import Image from "next/image";
-import { getCroppedImg } from "@/lib/utils/cropImage";
+import { getCroppedImg, TEMPLATE_IMAGE_ASPECT } from "@/lib/utils/cropImage";
 import "react-easy-crop/react-easy-crop.css";
-
-const ASPECT = 16 / 9;
 
 interface ImageUploadProps {
   templateId: string;
@@ -59,8 +57,9 @@ export default function ImageUpload({
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
       const file = new File([croppedBlob], "image.jpg", { type: "image/jpeg" });
       const compressed = await imageCompression(file, {
-        maxSizeMB: 0.5,
-        maxWidthOrHeight: 1200,
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1920,
+        initialQuality: 0.95,
         useWebWorker: true,
       });
 
@@ -100,7 +99,7 @@ export default function ImageUpload({
       </label>
       <div className="flex flex-col gap-3">
         {currentImageUrl ? (
-          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-base-300">
+          <div className="relative w-full aspect-[9/16] rounded-lg overflow-hidden bg-base-300">
             <Image
               src={currentImageUrl}
               alt="Template"
@@ -110,7 +109,7 @@ export default function ImageUpload({
             />
           </div>
         ) : (
-          <div className="w-full aspect-video rounded-lg bg-base-300 flex items-center justify-center text-base-content/60">
+          <div className="w-full aspect-[9/16] rounded-lg bg-base-300 flex items-center justify-center text-base-content/60">
             No image
           </div>
         )}
@@ -145,7 +144,7 @@ export default function ImageUpload({
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
-                aspect={ASPECT}
+                aspect={TEMPLATE_IMAGE_ASPECT}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}

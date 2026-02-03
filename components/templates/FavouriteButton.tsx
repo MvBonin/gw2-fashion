@@ -87,11 +87,15 @@ export default function FavouriteButton({
   };
 
   const isCard = variant === "card";
+  const isDetail = variant === "detail";
   const buttonClass = isCard
-    ? "flex items-center gap-0.5 rounded-full pl-1 pr-1.5 py-0.5 bg-base-100/80 hover:bg-base-100 text-base-content/80 hover:text-error absolute top-1 left-1 z-10 min-w-0"
-    : "btn btn-ghost btn-sm gap-1.5";
-  const iconClass = isCard ? "w-4 h-4 shrink-0" : "w-5 h-5";
+    ? "flex items-center gap-0.5 rounded-full pl-1 pr-1.5 py-0.5 bg-base-100/80 hover:bg-base-100 text-base-content/80 hover:text-error min-w-0"
+    : isDetail
+      ? "flex items-center gap-2 rounded-full pl-3 pr-4 py-2 bg-base-100/90 hover:bg-base-100 text-base-content/80 hover:text-error min-w-0 shadow-lg"
+      : "btn btn-ghost btn-sm gap-1.5";
+  const iconClass = isCard ? "w-4 h-4 shrink-0" : isDetail ? "w-8 h-8 shrink-0" : "w-5 h-5";
   const filledClass = isFavourited ? "text-error" : "";
+  const countClass = isCard ? "text-[10px]" : isDetail ? "text-base font-semibold" : "text-sm font-medium";
 
   return (
     <button
@@ -103,7 +107,7 @@ export default function FavouriteButton({
       aria-label={isFavourited ? "Remove from favourites" : "Add to favourites"}
     >
       <HeartIcon filled={isFavourited} className={`${iconClass} ${filledClass}`} />
-      <span className={`tabular-nums whitespace-nowrap ${isCard ? "text-[10px]" : "text-sm font-medium"}`}>
+      <span className={`tabular-nums whitespace-nowrap ${countClass}`}>
         {favouriteCount.toLocaleString()}
       </span>
     </button>
