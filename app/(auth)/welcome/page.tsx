@@ -3,14 +3,19 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/database.types";
 
-type Step = 1 | 2 | 3;
+type UserRow = Database["public"]["Tables"]["users"]["Row"];
+type Step = 0 | 1 | 2 | 3;
 
 export default function WelcomePage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [currentStep, setCurrentStep] = useState<Step>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Step 0: Terms accepted (required before proceeding)
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Step 1: Username
   const [username, setUsername] = useState("");
@@ -40,14 +45,16 @@ export default function WelcomePage() {
       }
 
       // Check if user has already completed welcome
-      const { data: profile, error: profileError } = await supabase
+      const { data, error: profileError } = await supabase
         .from("users")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
 
+      const profile = data as UserRow | null;
+
       // If profile exists and welcome is complete, redirect
-      if (profile && profile.username_manually_set) {
+      if (profile?.username_manually_set) {
         // User has completed welcome, redirect to home
         router.push("/");
       }
@@ -207,8 +214,13 @@ export default function WelcomePage() {
     }
   };
 
+  const handleAcceptTerms = () => {
+    setTermsAccepted(true);
+    setCurrentStep(1);
+  };
+
   const handleBack = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep((prev) => (prev - 1) as Step);
     }
   };
@@ -224,6 +236,9 @@ export default function WelcomePage() {
 
           {/* Progress Indicator */}
           <div className="steps steps-horizontal w-full mb-8">
+            <div className={`step ${currentStep >= 0 ? "step-primary" : ""}`}>
+              Terms
+            </div>
             <div className={`step ${currentStep >= 1 ? "step-primary" : ""}`}>
               Username
             </div>
@@ -239,6 +254,29 @@ export default function WelcomePage() {
           {error && (
             <div className="alert alert-error mb-4">
               <span>{error}</span>
+            </div>
+          )}
+
+          {/* Step 0: Terms of Use */}
+          {currentStep === 0 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Terms of Use</h2>
+              <p className="text-base-content/80">
+                By continuing, you confirm that you will not upload or share
+                content that is hateful, discriminatory, or illegal. You also
+                confirm that any images you use (e.g. in templates) are either
+                your own (e.g. in-game screenshots) or used with proper rights.
+                Violations may lead to content removal and account restrictions.
+              </p>
+              <div className="card-actions justify-end mt-6">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAcceptTerms}
+                >
+                  I Accept
+                </button>
+              </div>
             </div>
           )}
 
@@ -370,47 +408,49 @@ export default function WelcomePage() {
             </div>
           )}
 
-          {/* Navigation Buttons */}
-          <div className="card-actions justify-between mt-6">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={handleBack}
-              disabled={currentStep === 1 || isLoading}
-            >
-              Back
-            </button>
-            {currentStep === 3 ? (
+          {/* Navigation Buttons (hidden on step 0; step 0 has its own I Accept button) */}
+          {currentStep !== 0 && (
+            <div className="card-actions justify-between mt-6">
               <button
                 type="button"
-                className="btn btn-primary"
-                onClick={handleComplete}
+                className="btn btn-ghost"
+                onClick={handleBack}
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <>
-                    <span className="loading loading-spinner" />
-                    Starting...
-                  </>
-                ) : (
-                  "Start with Fashion"
-                )}
+                Back
               </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleNext}
-                disabled={
-                  (currentStep === 1 && !usernameValid) ||
-                  (currentStep === 2 && isValidatingKey) ||
-                  isLoading
-                }
-              >
-                {currentStep === 2 && !gw2ApiKey.trim() ? "Skip for now" : "Next"}
-              </button>
-            )}
-          </div>
+              {currentStep === 3 ? (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleComplete}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="loading loading-spinner" />
+                      Starting...
+                    </>
+                  ) : (
+                    "Start with Fashion"
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleNext}
+                  disabled={
+                    (currentStep === 1 && !usernameValid) ||
+                    (currentStep === 2 && isValidatingKey) ||
+                    isLoading
+                  }
+                >
+                  {currentStep === 2 && !gw2ApiKey.trim() ? "Skip for now" : "Next"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

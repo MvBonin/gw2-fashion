@@ -2,22 +2,42 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import TagInput from "@/components/templates/TagInput";
+import ImageUpload from "./ImageUpload";
+import TagInput from "./TagInput";
 
 type ArmorType = "light" | "medium" | "heavy";
 
-export default function NewTemplatePage() {
+interface TemplateEditFormProps {
+  templateId: string;
+  slug: string;
+  initialName: string;
+  initialFashionCode: string;
+  initialArmorType: ArmorType;
+  initialDescription: string;
+  initialTags: string[];
+  initialImageUrl: string | null;
+}
+
+export default function TemplateEditForm({
+  templateId,
+  slug,
+  initialName,
+  initialFashionCode,
+  initialArmorType,
+  initialDescription,
+  initialTags,
+  initialImageUrl,
+}: TemplateEditFormProps) {
   const router = useRouter();
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(initialImageUrl);
 
-  const [name, setName] = useState("");
-  const [fashionCode, setFashionCode] = useState("");
-  const [armorType, setArmorType] = useState<ArmorType>("light");
-  const [description, setDescription] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [name, setName] = useState(initialName);
+  const [fashionCode, setFashionCode] = useState(initialFashionCode);
+  const [armorType, setArmorType] = useState<ArmorType>(initialArmorType);
+  const [description, setDescription] = useState(initialDescription);
+  const [tags, setTags] = useState<string[]>(initialTags);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,19 +45,8 @@ export default function NewTemplatePage() {
     setLoading(true);
 
     try {
-      // Check authentication
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      // Submit to API
-      const response = await fetch("/api/templates/create", {
-        method: "POST",
+      const response = await fetch(`/api/templates/${templateId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
@@ -51,14 +60,13 @@ export default function NewTemplatePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Failed to create template");
+        setError(data.error || "Failed to update template");
         return;
       }
 
-      // Redirect to edit page so user can add image
-      router.push(`/template/${data.slug}/edit`);
+      router.push(`/template/${slug}`);
     } catch (err) {
-      console.error("Error creating template:", err);
+      console.error("Error updating template:", err);
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -66,9 +74,7 @@ export default function NewTemplatePage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8">Create New Template</h1>
-
+    <>
       {error && (
         <div className="alert alert-error mb-4">
           <span>{error}</span>
@@ -76,7 +82,11 @@ export default function NewTemplatePage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Template Name */}
+        <ImageUpload
+          templateId={templateId}
+          currentImageUrl={imageUrl}
+          onUploadSuccess={setImageUrl}
+        />
         <div className="form-control">
           <label className="label">
             <span className="label-text font-semibold">Template Name *</span>
@@ -93,7 +103,6 @@ export default function NewTemplatePage() {
           />
         </div>
 
-        {/* Fashion Code */}
         <div className="form-control">
           <label className="label">
             <span className="label-text font-semibold">Fashion Code *</span>
@@ -108,7 +117,6 @@ export default function NewTemplatePage() {
           />
         </div>
 
-        {/* Armor Type */}
         <div className="form-control">
           <label className="label">
             <span className="label-text font-semibold">Armor Type *</span>
@@ -141,7 +149,6 @@ export default function NewTemplatePage() {
           </div>
         </div>
 
-        {/* Description */}
         <div className="form-control">
           <label className="label">
             <span className="label-text">Description (optional)</span>
@@ -155,7 +162,6 @@ export default function NewTemplatePage() {
           />
         </div>
 
-        {/* Tags */}
         <div className="form-control">
           <label className="label">
             <span className="label-text">Tags (optional)</span>
@@ -167,7 +173,6 @@ export default function NewTemplatePage() {
           />
         </div>
 
-        {/* Submit Button */}
         <div className="form-control mt-8">
           <button
             type="submit"
@@ -177,15 +182,14 @@ export default function NewTemplatePage() {
             {loading ? (
               <>
                 <span className="loading loading-spinner"></span>
-                Creating...
+                Saving...
               </>
             ) : (
-              "Create Template"
+              "Save Changes"
             )}
           </button>
         </div>
       </form>
-    </div>
+    </>
   );
 }
-

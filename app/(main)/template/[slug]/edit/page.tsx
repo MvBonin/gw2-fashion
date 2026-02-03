@@ -1,0 +1,71 @@
+import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import TemplateEditForm from "@/components/templates/TemplateEditForm";
+import type { Database } from "@/types/database.types";
+
+type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];
+type TemplateWithTags = Pick<
+  TemplateRow,
+  "id" | "user_id" | "name" | "slug" | "fashion_code" | "armor_type" | "description" | "image_url"
+> & { template_tags?: { tags: { name: string } | null }[] | null };
+
+interface EditPageProps {
+  params: Promise<{ slug: string }>;
+}
+
+function templateTagsToNames(tt: TemplateWithTags["template_tags"]): string[] {
+  return (tt ?? []).map((x) => x.tags?.name).filter(Boolean) as string[];
+}
+
+export default async function TemplateEditPage({ params }: EditPageProps) {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("templates")
+    .select("id, user_id, name, slug, fashion_code, armor_type, description, image_url, template_tags(tags(name))")
+    .eq("slug", slug)
+    .eq("active", true)
+    .single();
+
+  const template = data as TemplateWithTags | null;
+
+  if (error || !template) {
+    notFound();
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  if (user.id !== template.user_id) {
+    notFound();
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <Link href={`/template/${slug}`} className="btn btn-ghost btn-sm">
+          ← Back to Template
+        </Link>
+      </div>
+      <h1 className="text-4xl font-bold mb-8">Edit Template</h1>
+      <TemplateEditForm
+        templateId={template.id}
+        slug={template.slug}
+        initialName={template.name}
+        initialFashionCode={template.fashion_code}
+        initialArmorType={template.armor_type as "light" | "medium" | "heavy"}
+        initialDescription={template.description ?? ""}
+        initialTags={templateTagsToNames(template.template_tags)}
+        initialImageUrl={template.image_url ?? null}
+      />
+    </div>
+  );
+}

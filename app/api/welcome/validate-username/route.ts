@@ -79,7 +79,6 @@ export async function POST(request: Request) {
         code: rpcError.code,
         details: rpcError.details,
         hint: rpcError.hint,
-        status: rpcError.status,
       });
 
       // Fallback: try direct query with case-insensitive filter

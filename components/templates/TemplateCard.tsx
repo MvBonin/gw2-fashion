@@ -3,7 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/client";
 import { abbreviateFashionCode, copyToClipboard } from "@/lib/utils/fashionCode";
+import { getCopiedIds, addCopiedId } from "@/lib/utils/trackingStorage";
+import FavouriteButton from "@/components/templates/FavouriteButton";
 
 interface TemplateCardProps {
   id: string;
@@ -14,10 +17,16 @@ interface TemplateCardProps {
   image_url: string | null;
   view_count: number;
   copy_count: number;
+  favourite_count: number;
+  isFavourited?: boolean;
   user?: {
     username: string;
   } | null;
+  templateUserId?: string | null;
+  tags?: string[];
 }
+
+const MAX_VISIBLE_TAGS = 4;
 
 export default function TemplateCard({
   id,
@@ -28,7 +37,11 @@ export default function TemplateCard({
   image_url,
   view_count,
   copy_count,
+  favourite_count,
+  isFavourited = false,
   user,
+  templateUserId,
+  tags = [],
 }: TemplateCardProps) {
   const [copied, setCopied] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
@@ -43,10 +56,19 @@ export default function TemplateCard({
     try {
       await copyToClipboard(fashion_code);
 
-      // Track copy event
-      await fetch(`/api/templates/${id}/copy`, {
-        method: "POST",
-      });
+      const supabase = createClient();
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      const isOwner = templateUserId && currentUser?.id === templateUserId;
+      const alreadyCopied = getCopiedIds().includes(id);
+
+      if (!isOwner && !alreadyCopied) {
+        const res = await fetch(`/api/templates/${id}/copy`, {
+          method: "POST",
+        });
+        if (res.ok) addCopiedId(id);
+      }
 
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -57,23 +79,23 @@ export default function TemplateCard({
     }
   };
 
-  const abbreviatedCode = abbreviateFashionCode(fashion_code, 50);
+  const abbreviatedCode = abbreviateFashionCode(fashion_code, 32);
 
   return (
-    <Link href={`/template/${slug}`} className="card bg-base-200 shadow-xl hover:shadow-2xl transition-shadow">
-      <figure className="relative w-full h-48 bg-base-300">
+    <Link href={`/template/${slug}`} className="card bg-base-200 shadow-md hover:shadow-lg transition-shadow compact">
+      <figure className="relative w-full h-28 sm:h-32 bg-base-300">
         {image_url ? (
           <Image
             src={image_url}
             alt={name}
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-base-content/30">
             <svg
-              className="w-24 h-24"
+              className="w-12 h-12 sm:w-14 sm:h-14"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -87,35 +109,74 @@ export default function TemplateCard({
             </svg>
           </div>
         )}
-        <div className="absolute top-2 right-2">
-          <span className="badge badge-primary badge-sm capitalize">
+        <div className="absolute top-1 left-1 z-10">
+          <FavouriteButton
+            templateId={id}
+            favouriteCount={favourite_count}
+            isFavourited={isFavourited}
+            variant="card"
+          />
+        </div>
+        <div className="absolute top-1 right-1">
+          <span className="badge badge-primary badge-xs capitalize">
             {armor_type}
           </span>
         </div>
       </figure>
-      <div className="card-body">
-        <h2 className="card-title text-lg">{name}</h2>
+      <div className="card-body p-2 sm:p-3">
+        <h2 className="card-title text-sm line-clamp-1" title={name}>{name}</h2>
         {user && (
-          <p className="text-sm text-base-content/70">by {user.username}</p>
+          <p className="text-xs text-base-content/70 truncate">by {user.username}</p>
         )}
-        <div className="mt-2">
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {tags.slice(0, MAX_VISIBLE_TAGS).map((tag, i) => (
+              <span key={i} className="badge badge-ghost badge-xs">
+                {tag}
+              </span>
+            ))}
+            {tags.length > MAX_VISIBLE_TAGS && (
+              <span className="badge badge-ghost badge-xs">+{tags.length - MAX_VISIBLE_TAGS}</span>
+            )}
+          </div>
+        )}
+        <div className="mt-1 join w-full flex min-w-0">
+          <input
+            type="text"
+            readOnly
+            disabled
+            className="input join-item flex-1 min-w-0 font-mono text-xs bg-base-200 border-base-300 truncate"
+            value={abbreviatedCode}
+            aria-label="Fashion code"
+            onClick={(e) => e.stopPropagation()}
+          />
           <button
+            type="button"
             onClick={handleCopyCode}
-            className="text-left w-full p-2 bg-base-300 rounded hover:bg-base-content/10 transition-colors text-sm font-mono break-all"
-            title="Click to copy full code"
+            className="btn btn-primary join-item btn-xs shrink-0"
+            disabled={isCopying}
+            title="Copy full code"
           >
             {copied ? (
-              <span className="text-success">✓ Copied!</span>
+              <span className="flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Copied!
+              </span>
             ) : (
-              <span className="text-base-content/80">{abbreviatedCode}</span>
+              <span className="flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy
+              </span>
             )}
           </button>
         </div>
-        <div className="card-actions justify-end mt-2">
-          <div className="flex gap-4 text-xs text-base-content/60">
-            <span>👁️ {view_count.toLocaleString()}</span>
-            <span>📋 {copy_count.toLocaleString()}</span>
-          </div>
+        <div className="flex gap-2 text-[10px] text-base-content/60 mt-0.5">
+          <span>👁️ {view_count.toLocaleString()}</span>
+          <span>📋 {copy_count.toLocaleString()}</span>
         </div>
       </div>
     </Link>

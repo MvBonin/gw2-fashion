@@ -12,10 +12,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -23,10 +20,7 @@ export async function POST(request: Request) {
 
     // Username is required
     if (!username || typeof username !== "string") {
-      return NextResponse.json(
-        { error: "Username is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Username is required" }, { status: 400 });
     }
 
     // Validate username format (same as validation endpoint)
@@ -59,13 +53,16 @@ export async function POST(request: Request) {
 
     // Check if username is available (excluding current user)
     // Use case-insensitive comparison via RPC function
-    const { data: usernameExists, error: rpcError } = await supabase.rpc(
+    const { data: usernameExistsRaw, error: rpcError } = await supabase.rpc(
       "username_exists",
       { check_username: trimmedUsername }
     );
 
+    const usernameExists = usernameExistsRaw === true;
+
     if (rpcError) {
       console.error("Error checking username:", rpcError);
+
       // Fallback to direct query
       const { data: existingUsers, error: checkError } = await supabase
         .from("users")
@@ -82,59 +79,66 @@ export async function POST(request: Request) {
       // Filter case-insensitively, excluding current user
       const lowerInput = trimmedUsername.toLowerCase();
       const existingUser = existingUsers?.find(
-        (u) =>
-          u.id !== user.id && u.username?.toLowerCase() === lowerInput
+        (u) => u.id !== user.id && (u.username ?? "").toLowerCase() === lowerInput
       );
 
       if (existingUser) {
-        return NextResponse.json(
-          { error: "Username is already taken" },
-          { status: 409 }
-        );
+        return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
       }
-    } else if (usernameExists === true) {
+    } else if (usernameExists) {
       // Check if it's the current user's username (allowed)
-      const { data: currentUser } = await supabase
+      const { data: currentUser, error: currentUserError } = await supabase
         .from("users")
         .select("username")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (
-        !currentUser ||
-        currentUser.username.toLowerCase() !== trimmedUsername.toLowerCase()
-      ) {
+      if (currentUserError) {
         return NextResponse.json(
-          { error: "Username is already taken" },
-          { status: 409 }
+          { error: "Error checking current username" },
+          { status: 500 }
         );
+      }
+
+      const currentUsernameLower = (currentUser?.username ?? "").toLowerCase();
+      if (currentUsernameLower !== trimmedUsername.toLowerCase()) {
+        return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
       }
     }
 
     // Check if user profile exists
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile, error: profileCheckError } = await supabase
       .from("users")
       .select("id")
       .eq("id", user.id)
       .maybeSingle();
 
-    // Prepare data
+    if (profileCheckError) {
+      return NextResponse.json(
+        { error: "Error checking existing profile" },
+        { status: 500 }
+      );
+    }
+
+    // Prepare data (terms_accepted_at set at completion - user accepted in wizard step 0)
     const profileData: {
       username: string;
       username_manually_set: boolean;
+      terms_accepted_at: string;
       gw2_api_key?: string | null;
       gw2_account_name?: string | null;
       gw2_account_name_public?: boolean;
     } = {
       username: trimmedUsername,
       username_manually_set: true,
+      terms_accepted_at: new Date().toISOString(),
     };
 
     // Add GW2 data if provided
-    if (gw2ApiKey) {
+    if (typeof gw2ApiKey === "string") {
       profileData.gw2_api_key = gw2ApiKey;
     }
-    if (gw2AccountName) {
+    if (typeof gw2AccountName === "string") {
       profileData.gw2_account_name = gw2AccountName;
     }
     if (typeof gw2AccountNamePublic === "boolean") {
@@ -142,45 +146,54 @@ export async function POST(request: Request) {
     }
 
     // Update or insert user profile
-    let dbError;
+    let dbError:
+      | {
+          code?: string;
+          message?: string;
+          details?: string | null;
+          hint?: string | null;
+        }
+      | null = null;
+
     if (existingProfile) {
       // User exists, update
-      const { data: updateData, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from("users")
         .update(profileData)
-        .eq("id", user.id)
-        .select();
-      dbError = updateError;
-      
+        .eq("id", user.id);
+
+      dbError = updateError as any;
+
       if (dbError) {
-        // Check if it's a unique constraint violation (username already taken)
-        if (dbError.code === "23505" || dbError.message?.includes("unique") || dbError.message?.includes("duplicate")) {
-          return NextResponse.json(
-            { error: "Username is already taken" },
-            { status: 409 }
-          );
+        // Unique constraint violation (username already taken)
+        if (
+          dbError.code === "23505" ||
+          dbError.message?.toLowerCase().includes("unique") ||
+          dbError.message?.toLowerCase().includes("duplicate")
+        ) {
+          return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
         }
       }
     } else {
-      // User doesn't exist, insert (shouldn't happen normally, but handle it)
-      // Note: This might fail due to RLS if there's no INSERT policy
-      const { data: insertData, error: insertError } = await supabase
+      // User doesn't exist, insert (handle edge cases)
+      const { error: insertError } = await supabase
         .from("users")
         .insert({
           id: user.id,
           email: user.email,
           ...profileData,
-        })
-        .select();
-      dbError = insertError;
-      
+        });
+
+      dbError = insertError as any;
+
       if (dbError) {
         // If insert fails, try update instead (user might have been created by trigger)
         const { error: retryUpdateError } = await supabase
           .from("users")
           .update(profileData)
           .eq("id", user.id);
-        dbError = retryUpdateError;
+
+        dbError = retryUpdateError as any;
       }
     }
 
@@ -195,19 +208,23 @@ export async function POST(request: Request) {
         userId: user.id,
         profileData,
       });
-      
-      // Provide more specific error messages
+
       let errorMessage = "Failed to save profile";
       if (dbError.code === "23505") {
         errorMessage = "Username is already taken";
-      } else if (dbError.message?.includes("permission") || dbError.message?.includes("policy")) {
+        return NextResponse.json({ error: errorMessage }, { status: 409 });
+      }
+      if (
+        dbError.message?.toLowerCase().includes("permission") ||
+        dbError.message?.toLowerCase().includes("policy")
+      ) {
         errorMessage = "Permission denied. Please contact support.";
       } else if (dbError.message) {
         errorMessage = dbError.message;
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: errorMessage,
           details: dbError.details || dbError.hint,
         },
@@ -218,10 +235,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error completing welcome:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

@@ -20,6 +20,8 @@ export default function SettingsPage() {
   const [isValidatingKey, setIsValidatingKey] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
   const [gw2AccountNamePublic, setGw2AccountNamePublic] = useState(false);
+  const [bio, setBio] = useState("");
+  const [bioSaving, setBioSaving] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -33,7 +35,7 @@ export default function SettingsPage() {
           return;
         }
 
-        const { data: profileData, error: profileError } = await supabase
+        const { data, error: profileError } = await supabase
           .from("users")
           .select("*")
           .eq("id", user.id)
@@ -45,9 +47,11 @@ export default function SettingsPage() {
           return;
         }
 
+        const profileData = data as UserProfile | null;
         if (profileData) {
           setProfile(profileData);
           setGw2AccountNamePublic(profileData.gw2_account_name_public || false);
+          setBio(profileData.bio ?? "");
         }
       } catch (err) {
         console.error("Unexpected error:", err);
@@ -173,6 +177,38 @@ export default function SettingsPage() {
       setError("Error deleting API key");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveBio = async () => {
+    setBioSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch("/api/profile/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio: bio.trim() || null }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Error saving description");
+        return;
+      }
+
+      if (profile) {
+        setProfile({ ...profile, bio: bio.trim() || null });
+      }
+      setSuccess("Description saved");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error saving bio:", err);
+      setError("Error saving description");
+    } finally {
+      setBioSaving(false);
     }
   };
 
@@ -318,6 +354,44 @@ export default function SettingsPage() {
               </button>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Bio / Description Section */}
+      <div className="card bg-base-200 shadow-xl mb-6">
+        <div className="card-body">
+          <h2 className="card-title text-2xl mb-4">Description</h2>
+          <p className="text-base-content/70 mb-4">
+            This description is shown on your profile.
+          </p>
+          <div className="form-control">
+            <textarea
+              className="textarea textarea-bordered w-full min-h-[120px]"
+              placeholder="Introduce yourself..."
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              maxLength={1000}
+            />
+            <label className="label">
+              <span className="label-text-alt text-base-content/60">
+                {bio.length}/1000 characters
+              </span>
+            </label>
+          </div>
+          <button
+            className="btn btn-primary"
+            onClick={handleSaveBio}
+            disabled={bioSaving || bio.trim() === (profile?.bio ?? "").trim()}
+          >
+            {bioSaving ? (
+              <>
+                <span className="loading loading-spinner loading-xs"></span>
+                Saving...
+              </>
+            ) : (
+              "Save description"
+            )}
+          </button>
         </div>
       </div>
 

@@ -43,8 +43,8 @@ export default async function Header() {
         <Link href="/" className="btn btn-ghost">
           Fashion
         </Link>
-        <Link href="/collections" className="btn btn-ghost">
-          Collections
+        <Link href="/favourites" className="btn btn-ghost">
+          Favourites
         </Link>
         {user && profile ? (
           <LoggedInNav profile={profile} />

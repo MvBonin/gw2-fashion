@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseHostname = supabaseUrl
+  ? new URL(supabaseUrl).hostname
+  : "supabase.co";
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -12,6 +17,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "media.discordapp.net",
         pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: supabaseHostname,
+        pathname: "/storage/v1/object/public/**",
       },
     ],
   },

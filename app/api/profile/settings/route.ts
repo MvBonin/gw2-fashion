@@ -43,13 +43,14 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { gw2ApiKey, gw2AccountName, gw2AccountNamePublic } = body;
+    const { gw2ApiKey, gw2AccountName, gw2AccountNamePublic, bio } = body;
 
     // Prepare update data
     const updateData: {
       gw2_api_key?: string | null;
       gw2_account_name?: string | null;
       gw2_account_name_public?: boolean;
+      bio?: string | null;
     } = {};
 
     // Handle API key update
@@ -132,6 +133,22 @@ export async function PATCH(request: Request) {
       updateData.gw2_account_name_public = gw2AccountNamePublic;
     }
 
+    // Handle bio/description update
+    if (body.hasOwnProperty("bio")) {
+      if (bio === null || bio === "") {
+        updateData.bio = null;
+      } else if (typeof bio === "string") {
+        const trimmed = bio.trim();
+        if (trimmed.length > 1000) {
+          return NextResponse.json(
+            { error: "Description must be at most 1000 characters." },
+            { status: 400 }
+          );
+        }
+        updateData.bio = trimmed || null;
+      }
+    }
+
     // If no updates, return error
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -140,9 +157,10 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Update user profile
+    // Update user profile (Supabase client .update() can infer arg as never)
     const { error: updateError } = await supabase
       .from("users")
+      // @ts-ignore - DB typings
       .update(updateData)
       .eq("id", user.id);
 

@@ -3,6 +3,33 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import TemplateDetailClient from "@/components/templates/TemplateDetailClient";
+import TemplateActions from "@/components/templates/TemplateActions";
+import ViewTracker from "@/components/templates/ViewTracker";
+import FavouriteButton from "@/components/templates/FavouriteButton";
+import type { Database } from "@/types/database.types";
+
+type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];
+type TemplateDetail = Pick<
+  TemplateRow,
+  | "id"
+  | "name"
+  | "slug"
+  | "fashion_code"
+  | "armor_type"
+  | "image_url"
+  | "description"
+  | "view_count"
+  | "copy_count"
+  | "favourite_count"
+  | "created_at"
+  | "user_id"
+> & {
+  users: { id: string; username: string } | null;
+  template_tags?: { tags: { name: string } | null }[] | null;
+};
+function templateTagsToNames(tt: TemplateDetail["template_tags"]): string[] {
+  return (tt ?? []).map((x) => x.tags?.name).filter(Boolean) as string[];
+}
 
 interface TemplateDetailPageProps {
   params: Promise<{
@@ -16,8 +43,8 @@ export default async function TemplateDetailPage({
   const { slug } = await params;
   const supabase = await createClient();
 
-  // Load template with user info
-  const { data: template, error } = await supabase
+  // Load template with user info and tags (only active)
+  const { data, error } = await supabase
     .from("templates")
     .select(
       `
@@ -28,40 +55,61 @@ export default async function TemplateDetailPage({
       armor_type,
       image_url,
       description,
-      tags,
       view_count,
       copy_count,
+      favourite_count,
       created_at,
-      users(id, username)
+      user_id,
+      users(id, username),
+      template_tags(tags(name))
     `
     )
     .eq("slug", slug)
+    .eq("active", true)
     .single();
 
+  const template = data as TemplateDetail | null;
   if (error || !template) {
     notFound();
   }
 
-  // Track view (fire and forget, don't wait for it)
-  // Use server-side increment directly for better performance
-  supabase
-    .from("templates")
-    .update({ view_count: template.view_count + 1 })
-    .eq("id", template.id)
-    .then()
-    .catch((err) => console.error("Error tracking view:", err));
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isOwner = user?.id === template.user_id;
+  const tagNames = templateTagsToNames(template.template_tags);
+
+  let isFavourited = false;
+  if (user) {
+    const { data: fav } = await supabase
+      .from("template_favourites")
+      .select("template_id")
+      .eq("user_id", user.id)
+      .eq("template_id", template.id)
+      .maybeSingle();
+    isFavourited = !!fav;
+  }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <Link href="/" className="btn btn-ghost btn-sm">
+    <div className="max-w-4xl mx-auto px-4">
+      <ViewTracker templateId={template.id} templateUserId={template.user_id ?? null} />
+
+      {/* Header strip: back (left) + actions (right) */}
+      <header className="flex items-center justify-between gap-4 py-4">
+        <Link href="/" className="link link-hover text-base-content/80">
           ← Back to Templates
         </Link>
-      </div>
+        <TemplateActions
+          templateId={template.id}
+          slug={template.slug}
+          isOwner={isOwner}
+          variant="header"
+        />
+      </header>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Image */}
-        <div className="relative w-full aspect-square bg-base-200 rounded-lg overflow-hidden">
+      <div className="grid grid-cols-2 max-md:grid-cols-1 gap-8">
+        {/* Left: image */}
+        <div className="relative w-full aspect-square rounded-xl overflow-hidden ring-1 ring-base-300 shadow-lg bg-base-200">
           {template.image_url ? (
             <Image
               src={template.image_url}
@@ -69,81 +117,72 @@ export default async function TemplateDetailPage({
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
+              priority
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-base-content/30">
-              <svg
-                className="w-48 h-48"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
+              <svg className="w-32 h-32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
           )}
         </div>
 
-        {/* Details */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h1 className="text-4xl font-bold">{template.name}</h1>
+        {/* Right: title, author, description, tags, fashion code, stats */}
+        <div className="min-w-0 flex flex-col">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl sm:text-4xl font-bold">{template.name}</h1>
             <span className="badge badge-primary badge-lg capitalize">
               {template.armor_type}
             </span>
+            <FavouriteButton
+              templateId={template.id}
+              favouriteCount={template.favourite_count ?? 0}
+              isFavourited={isFavourited}
+              variant="detail"
+            />
           </div>
-
           {template.users && (
-            <p className="text-lg text-base-content/70 mb-4">
+            <p className="text-base text-base-content/60 mt-1">
               by{" "}
-              <Link
-                href={`/profile/${template.users.username.toLowerCase()}`}
-                className="link link-primary"
-              >
+              <Link href={`/profile/${template.users.username.toLowerCase()}`} className="link link-primary">
                 {template.users.username}
               </Link>
             </p>
           )}
 
-          {template.description && (
-            <p className="text-base-content/80 mb-6">{template.description}</p>
-          )}
-
-          {template.tags && template.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {template.tags.map((tag, index) => (
-                <span key={index} className="badge badge-outline">
-                  {tag}
-                </span>
-              ))}
+          {(template.description || tagNames.length > 0) && (
+            <div className="mt-4 space-y-3">
+              {template.description && (
+                <p className="text-base-content/80 whitespace-pre-line">{template.description}</p>
+              )}
+              {tagNames.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {tagNames.map((tag, index) => (
+                    <span key={index} className="badge badge-outline">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          <div className="stats shadow mb-6">
-            <div className="stat">
-              <div className="stat-title">Views</div>
-              <div className="stat-value text-primary">
-                {template.view_count.toLocaleString()}
-              </div>
-            </div>
-            <div className="stat">
-              <div className="stat-title">Copies</div>
-              <div className="stat-value text-secondary">
-                {template.copy_count.toLocaleString()}
-              </div>
-            </div>
+          <div className="mt-6">
+            <TemplateDetailClient
+              templateId={template.id}
+              fashionCode={template.fashion_code}
+              templateUserId={template.user_id ?? null}
+            />
           </div>
 
-          {/* Fashion Code */}
-          <TemplateDetailClient
-            templateId={template.id}
-            fashionCode={template.fashion_code}
-          />
+          <div className="mt-6 pt-4 border-t border-base-300 text-sm text-base-content/60">
+            <span>{template.view_count.toLocaleString()} views</span>
+            <span className="mx-2">·</span>
+            <span>{template.copy_count.toLocaleString()} copies</span>
+            <span className="mx-2">·</span>
+            <span>{(template.favourite_count ?? 0).toLocaleString()} favourites</span>
+          </div>
         </div>
       </div>
     </div>
