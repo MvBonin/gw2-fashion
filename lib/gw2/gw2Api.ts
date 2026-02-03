@@ -14,6 +14,8 @@ export type ResolvedColor = {
   rgb: RgbTuple;
   /** Hex-String z. B. #7A1A1A für CSS/Anzeige. */
   hex: string;
+  /** GW2 Color-ID für Wiki/Chat-Link (optional). */
+  id?: number;
 };
 
 /** Aufgelöster Eintrag für die UI (Skin + Farben pro Slot). */
@@ -21,9 +23,13 @@ export type SkinsAndColorsEntry = {
   slot: string;
   skinName: string;
   skinIcon?: string;
+  /** Skin-ID für Wiki/Chat-Link (optional). */
+  skinId?: number;
   colors: ResolvedColor[];
   /** false bei Waffen-Slots (keine Färbung im Spiel). */
   showColors?: boolean;
+  /** Slot ist im Template ausgeblendet (z. B. Helm aus). */
+  hidden?: boolean;
 };
 
 /** Konvertiert GW2-API RGB [0–255] in Hex #RRGGBB. */

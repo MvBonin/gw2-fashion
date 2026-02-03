@@ -102,3 +102,19 @@ export function decodeFashionCode(chatCode: string): FashionSlotEntry[] | null {
 
   return entries;
 }
+
+/** Wardrobe-Skin-Chat-Link: Typ 0x0A, 3 Byte Skin-ID (24-bit LE), 1 Byte 0x00. */
+const WARDROBE_SKIN_LINK_TYPE = 0x0a;
+
+/**
+ * Baut einen GW2-Chat-Link für einen Wardrobe-Skin (z. B. zum Kopieren in den Spiel-Chat).
+ * Format: Header 0x0A, Skin-ID als 3 Byte Little-Endian, 1 Byte Null.
+ */
+export function buildSkinChatLink(skinId: number): string {
+  if (skinId < 0 || skinId > 0xffffff) return "";
+  const payload = Buffer.alloc(5);
+  payload[0] = WARDROBE_SKIN_LINK_TYPE;
+  payload.writeUIntLE(skinId, 1, 3);
+  payload[4] = 0;
+  return `[&${payload.toString("base64")}]`;
+}

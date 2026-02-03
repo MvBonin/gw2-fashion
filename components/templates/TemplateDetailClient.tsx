@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { copyToClipboard } from "@/lib/utils/fashionCode";
 import { getCopiedIds, addCopiedId } from "@/lib/utils/trackingStorage";
 import type { SkinsAndColorsEntry } from "@/lib/gw2/gw2Api";
+import EquipmentSlotDisplay from "@/components/templates/EquipmentSlotDisplay";
 
 interface TemplateDetailClientProps {
   templateId: string;
@@ -101,39 +101,18 @@ export default function TemplateDetailClient({
       {hasSkinsAndColors && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Skins & Farben</h2>
-          <ul className="space-y-4">
+          <ul className="space-y-3">
             {skinsAndColors!.map((entry, index) => (
-              <li key={`${entry.slot}-${index}`} className="rounded-lg border border-base-300 bg-base-200/50 p-3">
-                <div className="flex items-center gap-2 font-medium text-base-content">
-                  {entry.skinIcon && (
-                    <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded">
-                      <Image src={entry.skinIcon} alt="" width={32} height={32} className="object-cover" />
-                    </span>
-                  )}
-                  <span className="capitalize">{entry.slot}</span>
-                  <span className="text-base-content/70">–</span>
-                  <span>{entry.skinName}</span>
-                </div>
-                {entry.showColors !== false && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {entry.colors.map((color, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-base-300 px-2 py-0.5 text-sm"
-                      title={`${color.name} (${color.hex})`}
-                    >
-                      <span
-                        className="h-4 w-4 shrink-0 rounded-full border border-base-content/20"
-                        style={{ backgroundColor: color.hex }}
-                      />
-                      <span className="truncate max-w-[120px]">{color.name}</span>
-                      <span className="font-mono text-xs text-base-content/60" title={color.hex}>
-                        {color.hex}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-                )}
+              <li key={`${entry.slot}-${index}`}>
+                <EquipmentSlotDisplay
+                  skin={{
+                    id: entry.skinId ?? 0,
+                    name: entry.skinName,
+                    icon: entry.skinIcon,
+                  }}
+                  colors={entry.showColors !== false ? entry.colors : []}
+                  hidden={entry.hidden ?? false}
+                />
               </li>
             ))}
           </ul>

@@ -115,12 +115,18 @@ export default async function TemplateDetailPage({
           const fallbackRgb: [number, number, number] = [128, 128, 128];
           const c = colorMap.get(id);
           const rgb = c ? getDisplayRgb(c) : fallbackRgb;
-          return { name: c?.name ?? `Color ${id}`, rgb, hex: rgbToHex(rgb) };
+          return {
+            name: c?.name ?? `Color ${id}`,
+            rgb,
+            hex: rgbToHex(rgb),
+            id,
+          };
         });
       return {
         slot: e.slot,
         skinName,
         skinIcon: skin?.icon,
+        skinId: e.skinId,
         colors: colorEntries,
         showColors: true,
       };
