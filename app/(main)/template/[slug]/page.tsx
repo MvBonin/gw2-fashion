@@ -6,6 +6,8 @@ import TemplateDetailClient from "@/components/templates/TemplateDetailClient";
 import TemplateActions from "@/components/templates/TemplateActions";
 import ViewTracker from "@/components/templates/ViewTracker";
 import FavouriteButton from "@/components/templates/FavouriteButton";
+import { decodeFashionCode, WEAPON_SLOTS } from "@/lib/gw2/chatLink";
+import { fetchSkins, fetchColors, getDisplayRgb, rgbToHex, type SkinsAndColorsEntry } from "@/lib/gw2/gw2Api";
 import type { Database } from "@/types/database.types";
 
 type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];
@@ -88,6 +90,41 @@ export default async function TemplateDetailPage({
       .eq("template_id", template.id)
       .maybeSingle();
     isFavourited = !!fav;
+  }
+
+  let skinsAndColors: SkinsAndColorsEntry[] | null = null;
+  const entries = decodeFashionCode(template.fashion_code);
+  if (entries && entries.length > 0) {
+    const displayEntries = entries.filter(
+      (e) => !WEAPON_SLOTS.has(e.slot) && e.skinId > 1
+    );
+    const skinIds = displayEntries
+      .filter((e) => e.slot !== "Outfit")
+      .map((e) => e.skinId)
+      .filter((id) => id > 0);
+    const colorIds = displayEntries.flatMap((e) => e.colorIds).filter((id): id is number => id !== null && id > 1);
+    const [skins, colors] = await Promise.all([fetchSkins(skinIds), fetchColors(colorIds)]);
+    const skinMap = new Map(skins.map((s) => [s.id, s]));
+    const colorMap = new Map(colors.map((c) => [c.id, c]));
+    skinsAndColors = displayEntries.map((e) => {
+      const skin = e.slot === "Outfit" ? undefined : skinMap.get(e.skinId);
+      const skinName = e.slot === "Outfit" ? `Outfit (ID: ${e.skinId})` : (skin?.name ?? `Skin ${e.skinId}`);
+      const colorEntries = e.colorIds
+        .filter((id): id is number => id !== null && id !== 1)
+        .map((id) => {
+          const fallbackRgb: [number, number, number] = [128, 128, 128];
+          const c = colorMap.get(id);
+          const rgb = c ? getDisplayRgb(c) : fallbackRgb;
+          return { name: c?.name ?? `Color ${id}`, rgb, hex: rgbToHex(rgb) };
+        });
+      return {
+        slot: e.slot,
+        skinName,
+        skinIcon: skin?.icon,
+        colors: colorEntries,
+        showColors: true,
+      };
+    });
   }
 
   return (
@@ -175,6 +212,7 @@ export default async function TemplateDetailPage({
               templateId={template.id}
               fashionCode={template.fashion_code}
               templateUserId={template.user_id ?? null}
+              skinsAndColors={skinsAndColors}
             />
           </div>
 

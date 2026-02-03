@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
         hostname: supabaseHostname,
         pathname: "/storage/v1/object/public/**",
       },
+      {
+        protocol: "https",
+        hostname: "render.guildwars2.com",
+        pathname: "/**",
+      },
     ],
   },
 };
