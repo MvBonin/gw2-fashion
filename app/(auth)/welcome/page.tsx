@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.types";
 
@@ -267,6 +268,18 @@ export default function WelcomePage() {
                 confirm that any images you use (e.g. in templates) are either
                 your own (e.g. in-game screenshots) or used with proper rights.
                 Violations may lead to content removal and account restrictions.
+              </p>
+              <p className="text-sm text-base-content/70">
+                This site uses Guild Wars 2 content under{" "}
+                <Link
+                  href="https://www.arena.net/en/legal/content-terms-of-use"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link link-primary"
+                >
+                  ArenaNet&apos;s Content Use Policy
+                </Link>
+                .
               </p>
               <div className="card-actions justify-end mt-6">
                 <button

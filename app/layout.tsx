@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GW2 Fashion - Guild Wars 2 Fashion Templates",
+  title: "GW2 Fashion – Unofficial Fansite | Guild Wars 2 Fashion Templates",
   description: "Share and discover amazing fashion templates for Guild Wars 2",
   icons: {
     icon: "/icon.png",
