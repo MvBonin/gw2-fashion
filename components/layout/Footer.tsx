@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Coffee, Github, GithubIcon } from "lucide-react";
+import CookieSettingsTrigger from "@/components/layout/CookieSettingsTrigger";
 
 const GITHUB_REPO_URL = "https://github.com/MvBonin/gw2-fashion";
 const KOFI_URL = "https://ko-fi.com/mvbonin";
@@ -50,10 +51,12 @@ export default function Footer() {
           of NCSOFT Corporation. All other trademarks are the property of their
           respective owners.
         </p>
-        <p>
+        <p className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0">
           <Link href="/legal" className="link link-hover text-sm">
             Legal & Attribution
           </Link>
+          <span> · </span>
+          <CookieSettingsTrigger />
         </p>
       </aside>
     </footer>

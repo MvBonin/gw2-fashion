@@ -1,12 +1,13 @@
 "use client";
 
 import type { Database } from "@/types/database.types";
+import { hasOptionalConsent } from "@/lib/utils/cookieConsent";
 
 type UserProfile = Database["public"]["Tables"]["users"]["Row"];
 
 const CACHE_KEY = "gw2-fashion:user-profile";
 const CACHE_VERSION = 1;
-const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 Minuten
+const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 interface CachedProfile {
   profile: UserProfile;
@@ -15,7 +16,7 @@ interface CachedProfile {
 }
 
 /**
- * Speichert das User-Profile im localStorage
+ * Caches the user profile in localStorage (only when cookie consent is "Accept all").
  */
 export function cacheUserProfile(profile: UserProfile | null): void {
   if (typeof window === "undefined") return;
@@ -24,6 +25,8 @@ export function cacheUserProfile(profile: UserProfile | null): void {
     localStorage.removeItem(CACHE_KEY);
     return;
   }
+
+  if (!hasOptionalConsent()) return;
 
   const cached: CachedProfile = {
     profile,
@@ -39,11 +42,12 @@ export function cacheUserProfile(profile: UserProfile | null): void {
 }
 
 /**
- * Liest das User-Profile aus dem localStorage
- * Gibt null zurück, wenn kein Cache existiert oder abgelaufen ist
+ * Liest das User-Profile aus dem localStorage (nur bei Cookie-Consent „Alle akzeptieren“).
+ * Gibt null zurück, wenn kein Cache existiert, abgelaufen ist oder kein optionaler Consent vorliegt.
  */
 export function getCachedUserProfile(): UserProfile | null {
   if (typeof window === "undefined") return null;
+  if (!hasOptionalConsent()) return null;
 
   try {
     const cachedStr = localStorage.getItem(CACHE_KEY);
@@ -51,13 +55,13 @@ export function getCachedUserProfile(): UserProfile | null {
 
     const cached: CachedProfile = JSON.parse(cachedStr);
 
-    // Prüfe Version
+    // Check version
     if (cached.version !== CACHE_VERSION) {
       localStorage.removeItem(CACHE_KEY);
       return null;
     }
 
-    // Prüfe Ablaufzeit
+    // Check expiry
     const age = Date.now() - cached.timestamp;
     if (age > CACHE_EXPIRY_MS) {
       localStorage.removeItem(CACHE_KEY);
@@ -73,7 +77,7 @@ export function getCachedUserProfile(): UserProfile | null {
 }
 
 /**
- * Löscht den User-Profile-Cache
+ * Clears the user profile cache.
  */
 export function clearUserProfileCache(): void {
   if (typeof window === "undefined") return;

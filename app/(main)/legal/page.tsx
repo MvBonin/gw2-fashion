@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import CookieSettingsTrigger from "@/components/layout/CookieSettingsTrigger";
 
 export const metadata: Metadata = {
   title: "Legal & Attribution",
@@ -96,6 +97,32 @@ export default function LegalPage() {
             </Link>
           </li>
         </ul>
+      </section>
+
+      <section id="cookies" className="mb-8 scroll-mt-4">
+        <h2 className="text-xl font-semibold mb-2">
+          Cookies &amp; local storage (privacy)
+        </h2>
+        <p>
+          We set cookies and use local storage (localStorage) as follows:
+        </p>
+        <ul className="list-disc pl-6 space-y-1 my-2">
+          <li>
+            <strong>Strictly necessary (no consent required):</strong> Cookies
+            for sign-in (session) and technical operation of the site.
+          </li>
+          <li>
+            <strong>Optional (only with your consent):</strong> Local storage for
+            convenience features like &ldquo;recently viewed&rdquo;,
+            &ldquo;copied&rdquo; status, and profile cache. This data stays on your
+            device and is not sent to us.
+          </li>
+        </ul>
+        <p>
+          You can withdraw or change your consent at any time using{" "}
+          <CookieSettingsTrigger /> in the footer. You can reopen cookie
+          settings there and choose &ldquo;Necessary only&rdquo;.
+        </p>
       </section>
 
       <section className="mb-8">

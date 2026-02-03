@@ -1,9 +1,12 @@
+import { hasOptionalConsent } from "@/lib/utils/cookieConsent";
+
 const STORAGE_KEY_VIEWED = "gw2fashion_viewed";
 const STORAGE_KEY_COPIED = "gw2fashion_copied";
 const MAX_IDS = 500;
 
 function getIds(key: string): string[] {
   if (typeof window === "undefined") return [];
+  if (!hasOptionalConsent()) return [];
   try {
     const raw = window.localStorage.getItem(key);
     if (!raw) return [];
@@ -16,6 +19,7 @@ function getIds(key: string): string[] {
 
 function addId(key: string, id: string): void {
   if (typeof window === "undefined") return;
+  if (!hasOptionalConsent()) return;
   try {
     const ids = getIds(key);
     if (ids.includes(id)) return;
@@ -40,4 +44,15 @@ export function getCopiedIds(): string[] {
 
 export function addCopiedId(id: string): void {
   addId(STORAGE_KEY_COPIED, id);
+}
+
+/** Removes all optional tracking data (e.g. when consent is withdrawn). */
+export function clearOptionalTracking(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY_VIEWED);
+    window.localStorage.removeItem(STORAGE_KEY_COPIED);
+  } catch {
+    // ignore
+  }
 }
