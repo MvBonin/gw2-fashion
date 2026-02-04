@@ -13,6 +13,11 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Production
+
+- Set **NEXT_PUBLIC_SITE_URL** to your public URL (e.g. `https://gw2-fashion.com`) so login redirects and metadata use the correct domain.
+- In Supabase: **Authentication → URL Configuration** – set **Site URL** and add your callback to **Redirect URLs** (e.g. `https://gw2-fashion.com/auth/callback`).
+
 ## Scripts
 
 - `npm run dev` – development server
