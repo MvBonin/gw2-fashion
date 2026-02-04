@@ -8,6 +8,7 @@ export default function CookieSettingsTrigger() {
       type="button"
       onClick={openCookieSettings}
       className="link link-hover text-sm inline"
+      data-umami-event="cookie_settings_click"
     >
       Cookie settings
     </button>

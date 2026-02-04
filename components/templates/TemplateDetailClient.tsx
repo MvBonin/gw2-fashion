@@ -73,6 +73,7 @@ export default function TemplateDetailClient({
             onClick={handleCopy}
             className="btn btn-primary join-item shrink-0"
             disabled={isCopying}
+            data-umami-event="copy_code"
           >
             {copied ? (
               <span className="flex items-center gap-2">

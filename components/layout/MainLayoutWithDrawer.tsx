@@ -84,13 +84,13 @@ export default function MainLayoutWithDrawer({
               <Menu className="h-6 w-6" />
             </label>
             <div className="hidden lg:flex lg:items-center lg:gap-2">
-            <Link href="/template/new" className="btn btn-primary btn-ghost">
+            <Link href="/template/new" className="btn btn-primary btn-ghost" data-umami-event="create_template_click">
               Add Fashion
             </Link>
-            <Link href="/" className="btn btn-ghost">
+            <Link href="/" className="btn btn-ghost" data-umami-event="nav_fashion_click">
               Fashion
             </Link>
-            <Link href="/favourites" className="btn btn-ghost">
+            <Link href="/favourites" className="btn btn-ghost" data-umami-event="nav_favourites_click">
               Favourites
             </Link>
             {user && profile ? (
@@ -114,17 +114,17 @@ export default function MainLayoutWithDrawer({
         />
         <ul className="menu p-4 w-72 min-h-full bg-base-100 text-base-content gap-2">
           <li>
-            <Link href="/template/new" onClick={closeDrawer}>
+            <Link href="/template/new" onClick={closeDrawer} data-umami-event="create_template_click">
               Add Fashion
             </Link>
           </li>
           <li>
-            <Link href="/" onClick={closeDrawer}>
+            <Link href="/" onClick={closeDrawer} data-umami-event="nav_fashion_click">
               Fashion
             </Link>
           </li>
           <li>
-            <Link href="/favourites" onClick={closeDrawer}>
+            <Link href="/favourites" onClick={closeDrawer} data-umami-event="nav_favourites_click">
               Favourites
             </Link>
           </li>
@@ -134,12 +134,13 @@ export default function MainLayoutWithDrawer({
                 <Link
                   href={`/profile/${profile?.username?.toLowerCase() ?? ""}`}
                   onClick={closeDrawer}
+                  data-umami-event="nav_profile_click"
                 >
                   My Fashion / Profile
                 </Link>
               </li>
               <li>
-                <Link href="/profile/settings" onClick={closeDrawer}>
+                <Link href="/profile/settings" onClick={closeDrawer} data-umami-event="nav_settings_click">
                   Settings
                 </Link>
               </li>
@@ -151,7 +152,7 @@ export default function MainLayoutWithDrawer({
             </>
           ) : (
             <li>
-              <Link href="/login" onClick={closeDrawer} className="btn btn-primary">
+              <Link href="/login" onClick={closeDrawer} className="btn btn-primary" data-umami-event="login_click">
                 Login
               </Link>
             </li>

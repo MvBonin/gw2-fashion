@@ -54,6 +54,7 @@ export default function TemplateActions({
       <Link
         href={`/template/${slug}/edit`}
         className="btn btn-ghost btn-sm"
+        data-umami-event="template_edit_click"
       >
         Edit
       </Link>
@@ -62,6 +63,7 @@ export default function TemplateActions({
         onClick={handleDelete}
         disabled={deleting}
         className="btn btn-ghost btn-sm text-error"
+        data-umami-event="template_delete_click"
       >
         {deleting ? "Deleting..." : "Delete"}
       </button>

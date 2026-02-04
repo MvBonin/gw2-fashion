@@ -156,6 +156,7 @@ export default function TemplateCard({
             className="btn btn-primary join-item btn-xs shrink-0"
             disabled={isCopying}
             title="Copy full code"
+            data-umami-event="copy_code_card"
           >
             {copied ? (
               <span className="flex items-center gap-1">

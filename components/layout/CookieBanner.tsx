@@ -104,6 +104,7 @@ export default function CookieBanner() {
                 ref={firstFocusRef}
                 onClick={handleNecessaryOnly}
                 className="btn btn-ghost btn-sm"
+                data-umami-event="cookie_necessary_only"
               >
                 Necessary only
               </button>
@@ -111,6 +112,7 @@ export default function CookieBanner() {
                 type="button"
                 onClick={handleAcceptAll}
                 className="btn btn-primary btn-sm"
+                data-umami-event="cookie_accept_all"
               >
                 Accept all
               </button>

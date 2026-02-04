@@ -105,6 +105,7 @@ export default function FavouriteButton({
       className={buttonClass}
       title={isFavourited ? "Remove from favourites" : "Add to favourites"}
       aria-label={isFavourited ? "Remove from favourites" : "Add to favourites"}
+      data-umami-event="favourite_toggle"
     >
       <HeartIcon filled={isFavourited} className={`${iconClass} ${filledClass}`} />
       <span className={`tabular-nums whitespace-nowrap ${countClass}`}>

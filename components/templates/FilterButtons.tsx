@@ -49,6 +49,7 @@ export default function FilterButtons({
             className={`join-item btn flex-1 md:flex-initial ${
               sortOption === "trending" ? "btn-active" : ""
             }`}
+            data-umami-event="filter_sort_trending"
           >
             Trending
           </button>
@@ -58,6 +59,7 @@ export default function FilterButtons({
             className={`join-item btn flex-1 md:flex-initial ${
               sortOption === "popular" ? "btn-active" : ""
             }`}
+            data-umami-event="filter_sort_popular"
           >
             Popular
           </button>
@@ -67,6 +69,7 @@ export default function FilterButtons({
             className={`join-item btn flex-1 md:flex-initial ${
               sortOption === "new" ? "btn-active" : ""
             }`}
+            data-umami-event="filter_sort_new"
           >
             New
           </button>
@@ -79,6 +82,7 @@ export default function FilterButtons({
           type="button"
           onClick={() => updateFilter(null, sortOption)}
           className={`join-item btn flex-1 md:flex-initial ${!armorFilter ? "btn-active" : ""}`}
+          data-umami-event="filter_armor_all"
         >
           All
         </button>
@@ -86,6 +90,7 @@ export default function FilterButtons({
           type="button"
           onClick={() => updateFilter("light", sortOption)}
           className={`join-item btn flex-1 md:flex-initial ${armorFilter === "light" ? "btn-active" : ""}`}
+          data-umami-event="filter_armor_light"
         >
           Light
         </button>
@@ -93,6 +98,7 @@ export default function FilterButtons({
           type="button"
           onClick={() => updateFilter("medium", sortOption)}
           className={`join-item btn flex-1 md:flex-initial ${armorFilter === "medium" ? "btn-active" : ""}`}
+          data-umami-event="filter_armor_medium"
         >
           Medium
         </button>
@@ -100,6 +106,7 @@ export default function FilterButtons({
           type="button"
           onClick={() => updateFilter("heavy", sortOption)}
           className={`join-item btn flex-1 md:flex-initial ${armorFilter === "heavy" ? "btn-active" : ""}`}
+          data-umami-event="filter_armor_heavy"
         >
           Heavy
         </button>

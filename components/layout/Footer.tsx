@@ -27,6 +27,7 @@ export default function Footer() {
             target="_blank"
             rel="noopener noreferrer"
             className="link link-hover"
+            data-umami-event="support_ko-fi_click"
           >Support me with a <Coffee className="w-3.5 h-3.5 inline" />
           </Link> {" · "}
           <span>help me get some nice fashion too ( </span>
@@ -38,7 +39,7 @@ export default function Footer() {
               height={16}
               className="inline-block align-middle"
             /> {" "}mbonin.1085
-          </span>) {" · "} contribute <Link href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer" className="link link-hover"><GithubIcon className="w-3.5 h-3.5 inline mx-0.5" />GitHub</Link>
+          </span>) {" · "} contribute <Link href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer" className="link link-hover" data-umami-event="support_github_click"><GithubIcon className="w-3.5 h-3.5 inline mx-0.5" />GitHub</Link>
         </p>
 
         {/* 4. Legal */}
