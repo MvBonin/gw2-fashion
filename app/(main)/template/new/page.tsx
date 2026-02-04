@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import TagInput from "@/components/templates/TagInput";
@@ -23,6 +24,7 @@ export default function NewTemplatePage() {
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [showHowtoModal, setShowHowtoModal] = useState(false);
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
   const [pendingExtraFiles, setPendingExtraFiles] = useState<Record<ExtraPosition, File | null>>({
@@ -248,8 +250,15 @@ export default function NewTemplatePage() {
 
         {/* Fashion Code */}
         <div className="form-control">
-          <label className="label">
+          <label className="label justify-between">
             <span className="label-text font-semibold">Fashion Code *</span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-secondary"
+              onClick={() => setShowHowtoModal(true)}
+            >
+              How do I find my fashion code?
+            </button>
           </label>
           <input
             type="text"
@@ -389,6 +398,45 @@ export default function NewTemplatePage() {
             )}
           </button>
         </div>
+
+        {/* Howto modal */}
+        {showHowtoModal && (
+          <dialog
+            open
+            className="modal modal-open"
+            aria-modal="true"
+            aria-label="How to find your fashion code"
+          >
+            <div className="modal-box max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col p-4">
+              <div className="relative w-full min-h-[200px] flex-1">
+                <Image
+                  src="/howto.png"
+                  alt="How to find your fashion code in Guild Wars 2"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 896px) 100vw, 672px"
+                />
+              </div>
+              <div className="flex justify-end mt-2">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setShowHowtoModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div
+              className="modal-backdrop"
+              onClick={() => setShowHowtoModal(false)}
+              onKeyDown={(e) => e.key === "Escape" && setShowHowtoModal(false)}
+              role="button"
+              tabIndex={0}
+              aria-label="Close"
+            />
+          </dialog>
+        )}
       </form>
     </div>
   );
