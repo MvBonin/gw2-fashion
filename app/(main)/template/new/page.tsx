@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import TagInput from "@/components/templates/TagInput";
+import ImageUpload from "@/components/templates/ImageUpload";
 
 type ArmorType = "light" | "medium" | "heavy";
 
@@ -18,6 +19,22 @@ export default function NewTemplatePage() {
   const [armorType, setArmorType] = useState<ArmorType>("light");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
+
+  const handleFileReady = useCallback((file: File) => {
+    setPendingImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setPendingImageFile(file);
+  }, []);
+
+  const removePendingImage = useCallback(() => {
+    if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
+    setPendingImagePreviewUrl(null);
+    setPendingImageFile(null);
+  }, [pendingImagePreviewUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +72,20 @@ export default function NewTemplatePage() {
         return;
       }
 
-      // Redirect to edit page so user can add image
-      router.push(`/template/${data.slug}/edit`);
+      if (pendingImageFile) {
+        const formData = new FormData();
+        formData.append("file", pendingImageFile);
+        const imageRes = await fetch(`/api/templates/${data.id}/image`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!imageRes.ok) {
+          const imageData = await imageRes.json().catch(() => ({}));
+          setError(imageData.error || "Template created, but image upload failed.");
+        }
+      }
+
+      router.push(`/template/${data.slug}`);
     } catch (err) {
       console.error("Error creating template:", err);
       setError("An unexpected error occurred");
@@ -165,6 +194,22 @@ export default function NewTemplatePage() {
             onChange={setTags}
             placeholder="z.B. dark, thief, shadow – tippen für Vorschläge"
           />
+        </div>
+
+        <div className="form-control flex flex-col gap-2">
+          <ImageUpload
+            currentImageUrl={pendingImagePreviewUrl}
+            onFileReady={handleFileReady}
+          />
+          {pendingImageFile && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={removePendingImage}
+            >
+              Remove image
+            </button>
+          )}
         </div>
 
         {/* Submit Button */}

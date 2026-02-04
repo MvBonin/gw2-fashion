@@ -210,6 +210,10 @@ export interface Database {
         };
         Returns: unknown;
       };
+      update_templates_favourite_buckets: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
     };
     Enums: Record<string, never>;
   };

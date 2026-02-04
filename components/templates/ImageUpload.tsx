@@ -8,15 +8,21 @@ import { getCroppedImg, TEMPLATE_IMAGE_ASPECT } from "@/lib/utils/cropImage";
 import "react-easy-crop/react-easy-crop.css";
 
 interface ImageUploadProps {
-  templateId: string;
-  currentImageUrl: string | null;
-  onUploadSuccess: (imageUrl: string) => void;
+  /** Edit mode: required. Create mode: omit. */
+  templateId?: string;
+  /** Preview / current image URL. Optional in Create mode. */
+  currentImageUrl?: string | null;
+  /** Edit mode: called after successful API upload. */
+  onUploadSuccess?: (imageUrl: string) => void;
+  /** Create mode: called with cropped/compressed file instead of uploading. */
+  onFileReady?: (file: File) => void;
 }
 
 export default function ImageUpload({
   templateId,
-  currentImageUrl,
+  currentImageUrl = null,
   onUploadSuccess,
+  onFileReady,
 }: ImageUploadProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -63,6 +69,13 @@ export default function ImageUpload({
         useWebWorker: true,
       });
 
+      if (onFileReady) {
+        onFileReady(compressed);
+        closeCrop();
+        return;
+      }
+
+      if (!templateId || !onUploadSuccess) return;
       const formData = new FormData();
       formData.append("file", compressed);
 
@@ -94,11 +107,8 @@ export default function ImageUpload({
 
   return (
     <div className="form-control">
-      <label className="label">
-        <span className="label-text font-semibold">Template Image</span>
-      </label>
       <div className="flex flex-col gap-3">
-        {currentImageUrl ? (
+        {currentImageUrl && (
           <div className="relative w-full aspect-[9/16] rounded-lg overflow-hidden bg-base-300">
             <Image
               src={currentImageUrl}
@@ -107,10 +117,6 @@ export default function ImageUpload({
               className="object-contain"
               sizes="(max-width: 768px) 100vw, 672px"
             />
-          </div>
-        ) : (
-          <div className="w-full aspect-[9/16] rounded-lg bg-base-300 flex items-center justify-center text-base-content/60">
-            No image
           </div>
         )}
         <div className="flex gap-2">
@@ -123,7 +129,7 @@ export default function ImageUpload({
           />
           <button
             type="button"
-            className="btn btn-outline btn-sm"
+            className="btn btn-primary"
             onClick={() => fileInputRef.current?.click()}
           >
             {currentImageUrl ? "Change image" : "Upload image"}
