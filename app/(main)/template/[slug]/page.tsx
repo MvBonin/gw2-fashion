@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -37,6 +38,54 @@ interface TemplateDetailPageProps {
   params: Promise<{
     slug: string;
   }>;
+}
+
+type TemplateMeta = {
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string | null;
+  users: { username: string } | null;
+};
+
+async function getTemplateBySlug(slug: string): Promise<TemplateMeta | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("templates")
+    .select("name, slug, description, image_url, users(username)")
+    .eq("slug", slug)
+    .eq("active", true)
+    .single();
+  if (error || !data) return null;
+  return data as unknown as TemplateMeta;
+}
+
+export async function generateMetadata({
+  params,
+}: TemplateDetailPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const template = await getTemplateBySlug(slug);
+  if (!template) {
+    return { title: "Template | GW2 Fashion" };
+  }
+  const description =
+    (template.description && template.description.length > 0
+      ? template.description.slice(0, 155) + (template.description.length > 155 ? "…" : "")
+      : null) ??
+    (template.users
+      ? `Guild Wars 2 fashion template by ${template.users.username}.`
+      : "Guild Wars 2 fashion template on GW2 Fashion.");
+  const ogImage = template.image_url ?? "/icon.png";
+  return {
+    title: `${template.name} | GW2 Fashion`,
+    description,
+    openGraph: {
+      title: `${template.name} | GW2 Fashion`,
+      description,
+      url: `/template/${template.slug}`,
+      images: [{ url: ogImage, alt: template.name }],
+    },
+  };
 }
 
 export default async function TemplateDetailPage({

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import TemplateCard from "@/components/templates/TemplateCard";
@@ -6,6 +7,12 @@ import PaginationNav from "@/components/templates/PaginationNav";
 import SearchBar from "@/components/templates/SearchBar";
 import { TEMPLATES_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { Database } from "@/types/database.types";
+
+export const metadata: Metadata = {
+  title: "My Favourites | GW2 Fashion",
+  description: "Your saved Guild Wars 2 fashion templates on GW2 Fashion.",
+  robots: { index: false },
+};
 
 type ArmorType = "light" | "medium" | "heavy" | null;
 type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];

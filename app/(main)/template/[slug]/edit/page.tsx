@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import TemplateEditForm from "@/components/templates/TemplateEditForm";
 import type { Database } from "@/types/database.types";
+
+export const metadata: Metadata = {
+  title: "Edit Template | GW2 Fashion",
+  description: "Edit your Guild Wars 2 fashion template.",
+  robots: { index: false },
+};
 
 type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];
 type TemplateWithTags = Pick<

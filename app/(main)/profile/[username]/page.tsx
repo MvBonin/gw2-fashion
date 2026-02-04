@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import TemplateCard from "@/components/templates/TemplateCard";
@@ -32,6 +33,22 @@ interface ProfilePageProps {
     armor?: string;
     page?: string;
   }>;
+}
+
+export async function generateMetadata({
+  params,
+}: ProfilePageProps): Promise<Metadata> {
+  const { username } = await params;
+  const displayName = username.replace(/%20/g, " ");
+  return {
+    title: `${displayName}'s Fashion | GW2 Fashion`,
+    description: `Guild Wars 2 fashion templates by ${displayName}.`,
+    openGraph: {
+      title: `${displayName}'s Fashion | GW2 Fashion`,
+      description: `Guild Wars 2 fashion templates by ${displayName}.`,
+      url: `/profile/${encodeURIComponent(username)}`,
+    },
+  };
 }
 
 export default async function ProfilePage({ params, searchParams }: ProfilePageProps) {

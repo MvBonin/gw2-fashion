@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 import { useState } from "react";
 
 export default function LoginPage() {
@@ -27,6 +28,14 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-base-200">
       <div className="card w-96 bg-base-100 shadow-xl">
         <div className="card-body items-center text-center">
+          <Image
+            src="/icon.png"
+            alt="GW2 Fashion"
+            width={200}
+            height={200}
+            className="w-40 h-40 sm:w-50 sm:h-50 mb-4"
+            priority
+          />
           <h1 className="card-title text-3xl mb-4">GW2 Fashion</h1>
           <p className="mb-6 text-base-content/70">
             Share and discover amazing fashion templates for Guild Wars 2

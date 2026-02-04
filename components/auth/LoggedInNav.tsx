@@ -24,14 +24,16 @@ export default function LoggedInNav({ profile }: LoggedInNavProps) {
       setIsLoggingOut(true);
       clearUserProfileCache();
       const { error } = await supabase.auth.signOut();
-      
+
       if (error) {
         console.error("Logout error:", error);
       }
-      
+
+      router.refresh();
       router.replace("/");
     } catch (error) {
       console.error("Unexpected logout error:", error);
+      router.refresh();
       router.replace("/");
     } finally {
       setIsLoggingOut(false);
