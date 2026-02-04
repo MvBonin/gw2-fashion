@@ -26,7 +26,12 @@ export async function POST(request: Request) {
     if (error) {
       console.error("update_templates_favourite_buckets:", error);
       return NextResponse.json(
-        { error: error.message },
+        {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        },
         { status: 500 }
       );
     }
@@ -34,7 +39,10 @@ export async function POST(request: Request) {
   } catch (e) {
     console.error("Cron update-trending-buckets:", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Unknown error" },
+      {
+        error: e instanceof Error ? e.message : "Unknown error",
+        stack: e instanceof Error ? e.stack : undefined,
+      },
       { status: 500 }
     );
   }

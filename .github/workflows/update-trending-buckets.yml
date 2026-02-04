@@ -18,6 +18,14 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -fsS -X POST \
+          res=$(curl -sS -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$SITE_URL/api/cron/update-trending-buckets"
+            -H "Content-Type: application/json" \
+            "$SITE_URL/api/cron/update-trending-buckets")
+          code=$(echo "$res" | tail -n1)
+          body=$(echo "$res" | sed '$d')
+          echo "$body" | jq . 2>/dev/null || echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "HTTP $code"
+            exit 1
+          fi
