@@ -3,6 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import type { Database } from "@/types/database.types";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
+/** Cookie lifetime in seconds (400 days), aligned with @supabase/ssr default for persistent auth. */
+const AUTH_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
+
 type CookieToSet = { name: string; value: string; options: Record<string, unknown> };
 
 export async function GET(request: NextRequest) {
@@ -63,12 +66,13 @@ export async function GET(request: NextRequest) {
   // Create redirect and copy cookies from the session response
   const redirectResponse = NextResponse.redirect(`${baseUrl}/welcome`);
   
-  // Copy all cookies from the session response to maintain authentication
+  // Copy all cookies from the session response to maintain authentication (with maxAge so they persist across browser restarts)
   response.cookies.getAll().forEach((cookie) => {
     redirectResponse.cookies.set({
       name: cookie.name,
       value: cookie.value,
       ...cookieOptions,
+      ...(cookie.value ? { maxAge: AUTH_COOKIE_MAX_AGE } : { maxAge: 0 }),
     });
   });
 

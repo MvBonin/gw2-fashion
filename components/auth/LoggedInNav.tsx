@@ -1,9 +1,7 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
 import { clearUserProfileCache } from "@/lib/utils/userCache";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { User } from "lucide-react";
 import type { Database } from "@/types/database.types";
@@ -15,26 +13,17 @@ interface LoggedInNavProps {
 }
 
 export default function LoggedInNav({ profile }: LoggedInNavProps) {
-  const router = useRouter();
-  const supabase = createClient();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
       clearUserProfileCache();
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        console.error("Logout error:", error);
-      }
-
-      router.refresh();
-      router.replace("/");
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/";
     } catch (error) {
-      console.error("Unexpected logout error:", error);
-      router.refresh();
-      router.replace("/");
+      console.error("Logout error:", error);
+      window.location.href = "/";
     } finally {
       setIsLoggingOut(false);
     }

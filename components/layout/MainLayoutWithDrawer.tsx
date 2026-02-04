@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { clearUserProfileCache } from "@/lib/utils/userCache";
 import { Menu } from "lucide-react";
 import Footer from "@/components/layout/Footer";
@@ -32,18 +30,13 @@ export default function MainLayoutWithDrawer({
   profile,
   children,
 }: MainLayoutWithDrawerProps) {
-  const router = useRouter();
-  const supabase = createClient();
-
   const handleDrawerLogout = async () => {
     try {
       clearUserProfileCache();
-      await supabase.auth.signOut();
-      router.refresh();
-      router.replace("/");
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/";
     } catch {
-      router.refresh();
-      router.replace("/");
+      window.location.href = "/";
     } finally {
       closeDrawer();
     }

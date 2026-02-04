@@ -4,6 +4,11 @@ import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
 import { shouldRedirectToWelcome } from "@/lib/utils/welcome";
 import type { Database } from "@/types/database.types";
 
+/** Same as auth callback: persistent cookie lifetime (400 days) so session refresh keeps cookies across browser restarts. */
+const AUTH_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
+
+type CookieOptions = { path?: string; maxAge?: number };
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -19,39 +24,28 @@ export async function updateSession(request: NextRequest) {
         get(name: string) {
           return request.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options: { path?: string }) {
-          request.cookies.set({
-            name,
-            value,
+        set(name: string, value: string, options: CookieOptions) {
+          const opts = {
             ...options,
-          });
+            ...(value ? { maxAge: options.maxAge ?? AUTH_COOKIE_MAX_AGE } : { maxAge: 0 }),
+          };
+          request.cookies.set({ name, value, ...opts });
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
+          response.cookies.set({ name, value, ...opts });
         },
-        remove(name: string, options: { path?: string }) {
-          request.cookies.set({
-            name,
-            value: "",
-            ...options,
-          });
+        remove(name: string, options: CookieOptions) {
+          const opts = { ...options, maxAge: 0 };
+          request.cookies.set({ name, value: "", ...opts });
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           });
-          response.cookies.set({
-            name,
-            value: "",
-            ...options,
-          });
+          response.cookies.set({ name, value: "", ...opts });
         },
       },
     }
