@@ -189,6 +189,37 @@ export interface Database {
         };
         Relationships: [];
       };
+      template_extra_images: {
+        Row: {
+          id: string;
+          template_id: string;
+          position: number;
+          image_url: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          position: number;
+          image_url: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          position?: number;
+          image_url?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "template_extra_images_template_id_fkey";
+            columns: ["template_id"];
+            referencedRelation: "templates";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {

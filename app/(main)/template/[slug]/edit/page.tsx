@@ -16,7 +16,10 @@ type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];
 type TemplateWithTags = Pick<
   TemplateRow,
   "id" | "user_id" | "name" | "slug" | "fashion_code" | "armor_type" | "description" | "image_url"
-> & { template_tags?: { tags: { name: string } | null }[] | null };
+> & {
+  template_tags?: { tags: { name: string } | null }[] | null;
+  template_extra_images?: { position: number; image_url: string }[] | null;
+};
 
 interface EditPageProps {
   params: Promise<{ slug: string }>;
@@ -32,7 +35,9 @@ export default async function TemplateEditPage({ params }: EditPageProps) {
 
   const { data, error } = await supabase
     .from("templates")
-    .select("id, user_id, name, slug, fashion_code, armor_type, description, image_url, template_tags(tags(name))")
+    .select(
+      "id, user_id, name, slug, fashion_code, armor_type, description, image_url, template_tags(tags(name)), template_extra_images(position, image_url)"
+    )
     .eq("slug", slug)
     .eq("active", true)
     .single();
@@ -72,6 +77,12 @@ export default async function TemplateEditPage({ params }: EditPageProps) {
         initialDescription={template.description ?? ""}
         initialTags={templateTagsToNames(template.template_tags)}
         initialImageUrl={template.image_url ?? null}
+        initialExtraImages={
+          template.template_extra_images?.map((e) => ({
+            position: e.position,
+            image_url: e.image_url,
+          })) ?? []
+        }
       />
     </div>
   );

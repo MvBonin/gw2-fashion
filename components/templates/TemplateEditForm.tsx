@@ -3,9 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageUpload from "./ImageUpload";
+import ExtraImageSlot from "./ExtraImageSlot";
 import TagInput from "./TagInput";
 
 type ArmorType = "light" | "medium" | "heavy";
+
+export type ExtraImage = { position: number; image_url: string };
 
 interface TemplateEditFormProps {
   templateId: string;
@@ -16,6 +19,16 @@ interface TemplateEditFormProps {
   initialDescription: string;
   initialTags: string[];
   initialImageUrl: string | null;
+  initialExtraImages?: ExtraImage[];
+}
+
+function extraImagesToRecord(extra: ExtraImage[] | undefined): Record<1 | 2 | 3, string | null> {
+  const record: Record<1 | 2 | 3, string | null> = { 1: null, 2: null, 3: null };
+  if (!extra) return record;
+  for (const { position, image_url } of extra) {
+    if (position >= 1 && position <= 3) record[position as 1 | 2 | 3] = image_url;
+  }
+  return record;
 }
 
 export default function TemplateEditForm({
@@ -27,11 +40,15 @@ export default function TemplateEditForm({
   initialDescription,
   initialTags,
   initialImageUrl,
+  initialExtraImages,
 }: TemplateEditFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(initialImageUrl);
+  const [extraImages, setExtraImages] = useState<Record<1 | 2 | 3, string | null>>(
+    () => extraImagesToRecord(initialExtraImages)
+  );
 
   const [name, setName] = useState(initialName);
   const [fashionCode, setFashionCode] = useState(initialFashionCode);
@@ -87,6 +104,28 @@ export default function TemplateEditForm({
           currentImageUrl={imageUrl}
           onUploadSuccess={setImageUrl}
         />
+
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-semibold">Zusätzliche Bilder (optional)</span>
+          </label>
+          <p className="text-sm text-base-content/70 mb-2">
+            Bis zu 3 weitere Bilder, um den Charakter besser zu zeigen. Nur das Hauptbild erscheint auf der Karte.
+          </p>
+          <div className="flex flex-wrap gap-6">
+            {([1, 2, 3] as const).map((pos) => (
+              <ExtraImageSlot
+                key={pos}
+                templateId={templateId}
+                position={pos}
+                currentImageUrl={extraImages[pos]}
+                onUploadSuccess={(url) => setExtraImages((prev) => ({ ...prev, [pos]: url }))}
+                onRemove={() => setExtraImages((prev) => ({ ...prev, [pos]: null }))}
+              />
+            ))}
+          </div>
+        </div>
+
         <div className="form-control">
           <label className="label">
             <span className="label-text font-semibold">Template Name *</span>
