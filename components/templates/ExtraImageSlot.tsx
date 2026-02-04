@@ -32,7 +32,7 @@ export default function ExtraImageSlot({
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Nur JPEG, PNG oder WebP.");
+      setError("Use JPEG, PNG or WebP only.");
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
@@ -60,14 +60,14 @@ export default function ExtraImageSlot({
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || "Upload fehlgeschlagen");
+        throw new Error(data.error || "Upload failed");
       }
       if (!data.image_url) {
-        throw new Error("Keine Bild-URL erhalten");
+        throw new Error("No image URL returned");
       }
       onUploadSuccess(data.image_url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload fehlgeschlagen");
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -83,11 +83,11 @@ export default function ExtraImageSlot({
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Löschen fehlgeschlagen");
+        throw new Error(data.error || "Delete failed");
       }
       onRemove();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Löschen fehlgeschlagen");
+      setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setUploading(false);
     }
@@ -99,14 +99,14 @@ export default function ExtraImageSlot({
         {currentImageUrl ? (
           <Image
             src={currentImageUrl}
-            alt={`Zusatzbild ${position}`}
+            alt={`Extra image ${position}`}
             fill
             className="object-cover"
             sizes="96px"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-base-content/30">
-            <span className="text-xs">Bild {position + 1}</span>
+            <span className="text-xs">Image {position + 1}</span>
           </div>
         )}
       </div>
@@ -124,7 +124,7 @@ export default function ExtraImageSlot({
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
         >
-          {currentImageUrl ? "Ändern" : "Hochladen"}
+          {currentImageUrl ? "Change" : "Upload"}
         </button>
         {currentImageUrl && (
           <button
@@ -133,7 +133,7 @@ export default function ExtraImageSlot({
             onClick={handleRemove}
             disabled={uploading}
           >
-            Entfernen
+            Remove
           </button>
         )}
       </div>

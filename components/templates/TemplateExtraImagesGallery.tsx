@@ -26,7 +26,7 @@ export default function TemplateExtraImagesGallery({
   return (
     <>
       <div className="mt-4">
-        <p className="text-sm text-base-content/70 mb-2">Weitere Ansichten</p>
+        <p className="text-sm text-base-content/70 mb-2">More views</p>
         <div className="flex flex-wrap gap-3">
           {sorted.map((img) => (
             <button
@@ -34,11 +34,11 @@ export default function TemplateExtraImagesGallery({
               type="button"
               className="relative w-20 h-20 rounded-lg overflow-hidden ring-1 ring-base-300 hover:ring-primary focus:outline-none focus:ring-2 focus:ring-primary shrink-0"
               onClick={() => setLightboxUrl(img.image_url)}
-              aria-label={`Bild ${img.position} vergrößern`}
+              aria-label={`Enlarge image ${img.position}`}
             >
               <Image
                 src={img.image_url}
-                alt={`${templateName} – Ansicht ${img.position}`}
+                alt={`${templateName} – view ${img.position}`}
                 fill
                 className="object-cover"
                 sizes="80px"
@@ -74,7 +74,7 @@ export default function TemplateExtraImagesGallery({
             onKeyDown={(e) => e.key === "Escape" && setLightboxUrl(null)}
             role="button"
             tabIndex={0}
-            aria-label="Schließen"
+            aria-label="Close"
           />
         </dialog>
       )}

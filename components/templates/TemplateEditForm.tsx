@@ -107,10 +107,10 @@ export default function TemplateEditForm({
 
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-semibold">Zusätzliche Bilder (optional)</span>
+            <span className="label-text font-semibold">Additional images (optional)</span>
           </label>
           <p className="text-sm text-base-content/70 mb-2">
-            Bis zu 3 weitere Bilder, um den Charakter besser zu zeigen. Nur das Hauptbild erscheint auf der Karte.
+            Up to 3 more images to show your character better. Only the main image appears on the card.
           </p>
           <div className="flex flex-wrap gap-6">
             {([1, 2, 3] as const).map((pos) => (
