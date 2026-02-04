@@ -1,6 +1,8 @@
--- Single roundtrip: ensure tags exist and return (id, name) for all given names.
--- Reduces create/PATCH template latency when tags are present.
-CREATE OR REPLACE FUNCTION public.get_or_create_tag_ids(tag_names text[])
+-- 1) Drop the old function (signature must match exactly)
+DROP FUNCTION IF EXISTS public.get_or_create_tag_ids(text[]);
+
+-- 2) Recreate with the non-ambiguous return column name
+CREATE FUNCTION public.get_or_create_tag_ids(tag_names text[])
 RETURNS TABLE(id uuid, tag_name text)
 LANGUAGE plpgsql
 SECURITY INVOKER

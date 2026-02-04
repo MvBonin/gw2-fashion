@@ -3,9 +3,12 @@
 -- If this migration was already applied and you only fixed the function signature:
 -- run this entire file in Supabase Dashboard → SQL Editor to update the function in place.
 -- Drop any existing version (e.g. with OUT params) so only the RETURNS TABLE version remains.
-DROP FUNCTION IF EXISTS create_template_with_tags(uuid, text, text, armor_type_enum, text, boolean, text[]);
 
-CREATE OR REPLACE FUNCTION create_template_with_tags(
+DROP FUNCTION IF EXISTS public.create_template_with_tags(
+  uuid, text, text, armor_type_enum, text, boolean, text[]
+);
+
+CREATE OR REPLACE FUNCTION public.create_template_with_tags(
   p_user_id uuid,
   p_name text,
   p_fashion_code text,
@@ -33,27 +36,41 @@ DECLARE
   v_suffix text;
 BEGIN
   -- Must be creating for self
-  IF auth.uid() IS NULL OR auth.uid() != p_user_id THEN
+  IF auth.uid() IS NULL OR auth.uid() <> p_user_id THEN
     RAISE EXCEPTION 'Unauthorized';
   END IF;
 
   -- Username for slug
-  SELECT u.username INTO v_username
-  FROM users u
+  SELECT u.username
+  INTO v_username
+  FROM public.users AS u
   WHERE u.id = p_user_id;
+
   IF v_username IS NULL THEN
     RAISE EXCEPTION 'User profile not found';
   END IF;
 
   -- Slugify (match JS: lower, trim, non-word out, spaces/hyphens to single hyphen, trim hyphens)
-  v_username_slug := trim(both '-' from regexp_replace(regexp_replace(lower(trim(v_username)), '[^a-z0-9\s-]', '', 'g'), '[\s_-]+', '-', 'g'));
-  v_template_slug := trim(both '-' from regexp_replace(regexp_replace(lower(trim(p_name)), '[^a-z0-9\s-]', '', 'g'), '[\s_-]+', '-', 'g'));
+  v_username_slug :=
+    trim(both '-' from regexp_replace(
+      regexp_replace(lower(trim(v_username)), '[^a-z0-9\s-]', '', 'g'),
+      '[\s_-]+', '-', 'g'
+    ));
+
+  v_template_slug :=
+    trim(both '-' from regexp_replace(
+      regexp_replace(lower(trim(p_name)), '[^a-z0-9\s-]', '', 'g'),
+      '[\s_-]+', '-', 'g'
+    ));
+
   v_base_slug := v_username_slug || '-' || v_template_slug;
 
   -- Existing slugs for this base
-  SELECT array_agg(t.slug) INTO v_existing_slugs
-  FROM templates t
-  WHERE t.slug = v_base_slug OR t.slug LIKE v_base_slug || '-%';
+  SELECT array_agg(t.slug)
+  INTO v_existing_slugs
+  FROM public.templates AS t
+  WHERE t.slug = v_base_slug
+     OR t.slug LIKE v_base_slug || '-%';
 
   IF v_existing_slugs IS NULL OR array_length(v_existing_slugs, 1) IS NULL THEN
     v_slug := v_base_slug;
@@ -70,6 +87,7 @@ BEGIN
         END IF;
       END IF;
     END LOOP;
+
     IF NOT v_has_base AND v_max_num = 0 THEN
       v_slug := v_base_slug;
     ELSE
@@ -78,15 +96,24 @@ BEGIN
   END IF;
 
   -- Insert template
-  INSERT INTO templates (user_id, name, slug, fashion_code, armor_type, description, is_private)
-  VALUES (p_user_id, p_name, v_slug, p_fashion_code, p_armor_type, nullif(trim(p_description), ''), p_is_private)
-  RETURNING templates.id INTO v_template_id;
+  INSERT INTO public.templates (user_id, name, slug, fashion_code, armor_type, description, is_private)
+  VALUES (
+    p_user_id,
+    p_name,
+    v_slug,
+    p_fashion_code,
+    p_armor_type,
+    nullif(trim(p_description), ''),
+    p_is_private
+  )
+  RETURNING public.templates.id INTO v_template_id;
 
   -- Tags: ensure exist and link (get_or_create_tag_ids normalizes names internally)
+  -- NOTE: get_or_create_tag_ids now returns (id, tag_name). We only need id.
   IF p_tag_names IS NOT NULL AND array_length(p_tag_names, 1) > 0 THEN
-    INSERT INTO template_tags (template_id, tag_id)
-    SELECT v_template_id, tag_row.id
-    FROM get_or_create_tag_ids(p_tag_names) AS tag_row;
+    INSERT INTO public.template_tags (template_id, tag_id)
+    SELECT v_template_id, tg.id
+    FROM public.get_or_create_tag_ids(p_tag_names) AS tg;
   END IF;
 
   id := v_template_id;
