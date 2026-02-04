@@ -61,20 +61,25 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const pathname = request.nextUrl.pathname;
+  const isApiRoute = pathname.startsWith("/api");
+
+  // API routes: only refresh session (getUser above), no profile fetch or redirects
+  if (isApiRoute) {
+    return response;
+  }
+
   // Base URL for redirects (production: NEXT_PUBLIC_SITE_URL, else request origin)
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
     new URL(request.url).origin;
 
-  // Check if user needs welcome
-  const pathname = request.nextUrl.pathname;
   const isWelcomePage = pathname === "/welcome";
   const isAuthCallback = pathname === "/auth/callback";
   const isLoginPage = pathname === "/login";
-  const isApiRoute = pathname.startsWith("/api");
   const isLegalPage = pathname === "/legal";
 
-  // If user is authenticated, check welcome status
+  // If user is authenticated, check welcome status (pages only)
   if (user) {
     const { data: profile } = await supabase
       .from("users")
@@ -82,14 +87,11 @@ export async function updateSession(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    // If user tries to access welcome but has already completed it, redirect to home
     if (isWelcomePage && profile && !shouldRedirectToWelcome(profile)) {
       return NextResponse.redirect(new URL("/", baseUrl));
     }
 
-    // If user hasn't completed welcome and is not on an allowed page, redirect to welcome
-    // Legal is always reachable so users can read ToS/Privacy before accepting
-    if (!isWelcomePage && !isAuthCallback && !isLoginPage && !isApiRoute && !isLegalPage) {
+    if (!isWelcomePage && !isAuthCallback && !isLoginPage && !isLegalPage) {
       if (shouldRedirectToWelcome(profile)) {
         return NextResponse.redirect(new URL("/welcome", baseUrl));
       }

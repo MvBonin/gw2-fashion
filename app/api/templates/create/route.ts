@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { generateTemplateSlug } from "@/lib/utils/slug";
+import { getOrCreateTagIds, normalizeTagName } from "@/lib/utils/tags";
 import type { Database } from "@/types/database.types";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 type UserUsername = Pick<
   Database["public"]["Tables"]["users"]["Row"],
@@ -11,40 +11,11 @@ type UserUsername = Pick<
 type TemplatesInsert = Database["public"]["Tables"]["templates"]["Insert"];
 type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];
 
-function normalizeTagName(name: string): string {
-  return name.trim().toLowerCase();
-}
-
-async function getOrCreateTagId(
-  supabase: SupabaseClient<Database>,
-  name: string
-): Promise<string | null> {
-  const normalized = normalizeTagName(name);
-  if (!normalized) return null;
-
-  const { data: existing } = await supabase
-    .from("tags")
-    .select("id")
-    .eq("name", normalized)
-    .single();
-
-  if (existing) return existing.id;
-
-  const { data: inserted, error } = await supabase
-    .from("tags")
-    .insert({ name: normalized })
-    .select("id")
-    .single();
-
-  if (error || !inserted) return null;
-  return inserted.id;
-}
-
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
 
-    // Check authentication
+    // Check authentication (session from cookies; middleware already ran without profile fetch)
     const {
       data: { user },
       error: authError,
@@ -100,8 +71,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate slug
-    const slug = await generateTemplateSlug(profile.username, name.trim());
+    // Generate slug (single roundtrip)
+    const slug = await generateTemplateSlug(supabase, profile.username, name.trim());
 
     // Create template (no tags column)
     const insertPayload: TemplatesInsert = {
@@ -128,19 +99,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get-or-create tags and link via template_tags
+    // Get-or-create tags and link via template_tags (batch)
     const tagNames =
       Array.isArray(tags) && tags.length > 0
         ? [...new Set(tags.map((t: unknown) => (typeof t === "string" ? normalizeTagName(t) : "")).filter(Boolean))]
         : [];
-    for (const tagName of tagNames) {
-      const tagId = await getOrCreateTagId(supabase, tagName);
-      if (tagId) {
-        await supabase.from("template_tags").insert({
-          template_id: template.id,
-          tag_id: tagId,
-        });
-      }
+    const tagIdMap = await getOrCreateTagIds(supabase, tagNames);
+    const templateTagRows = tagNames
+      .map((name) => ({ template_id: template.id, tag_id: tagIdMap.get(name) }))
+      .filter((row): row is { template_id: string; tag_id: string } => row.tag_id != null);
+    if (templateTagRows.length > 0) {
+      await supabase.from("template_tags").insert(templateTagRows);
     }
 
     return NextResponse.json({

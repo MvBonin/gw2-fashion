@@ -1,42 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getOrCreateTagIds, normalizeTagName } from "@/lib/utils/tags";
 import type { Database } from "@/types/database.types";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 type TemplateIdUser = Pick<
   Database["public"]["Tables"]["templates"]["Row"],
   "id" | "user_id"
 >;
 type TemplatesUpdate = Database["public"]["Tables"]["templates"]["Update"];
-
-function normalizeTagName(name: string): string {
-  return name.trim().toLowerCase();
-}
-
-async function getOrCreateTagId(
-  supabase: SupabaseClient<Database>,
-  name: string
-): Promise<string | null> {
-  const normalized = normalizeTagName(name);
-  if (!normalized) return null;
-
-  const { data: existing } = await supabase
-    .from("tags")
-    .select("id")
-    .eq("name", normalized)
-    .single();
-
-  if (existing) return existing.id;
-
-  const { data: inserted, error } = await supabase
-    .from("tags")
-    .insert({ name: normalized })
-    .select("id")
-    .single();
-
-  if (error || !inserted) return null;
-  return inserted.id;
-}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -165,7 +136,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
     }
 
-    // Sync tags via template_tags
+    // Sync tags via template_tags (batch)
     if (tags !== undefined) {
       await supabase.from("template_tags").delete().eq("template_id", id);
 
@@ -179,14 +150,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
               ),
             ]
           : [];
-      for (const tagName of tagNames) {
-        const tagId = await getOrCreateTagId(supabase, tagName);
-        if (tagId) {
-          await supabase.from("template_tags").insert({
-            template_id: id,
-            tag_id: tagId,
-          });
-        }
+      const tagIdMap = await getOrCreateTagIds(supabase, tagNames);
+      const templateTagRows = tagNames
+        .map((name) => ({ template_id: id, tag_id: tagIdMap.get(name) }))
+        .filter((row): row is { template_id: string; tag_id: string } => row.tag_id != null);
+      if (templateTagRows.length > 0) {
+        await supabase.from("template_tags").insert(templateTagRows);
       }
     }
 

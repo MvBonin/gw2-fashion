@@ -43,7 +43,6 @@ export default function NewTemplatePage() {
     setLoading(true);
 
     try {
-      // Check authentication
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -53,44 +52,77 @@ export default function NewTemplatePage() {
         return;
       }
 
-      // Submit to API
-      const response = await fetch("/api/templates/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          fashion_code: fashionCode.trim(),
-          armor_type: armorType,
-          description: description.trim() || null,
-          tags: tags.length > 0 ? tags : null,
-          is_private: isPrivate,
-        }),
-      });
+      const createAbort = new AbortController();
+      const createTimeout = setTimeout(() => createAbort.abort(), 30_000);
 
-      const data = await response.json();
+      let response: Response;
+      try {
+        response = await fetch("/api/templates/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            fashion_code: fashionCode.trim(),
+            armor_type: armorType,
+            description: description.trim() || null,
+            tags: tags.length > 0 ? tags : null,
+            is_private: isPrivate,
+          }),
+          signal: createAbort.signal,
+        });
+      } finally {
+        clearTimeout(createTimeout);
+      }
+
+      let data: { id?: string; slug?: string; error?: string };
+      try {
+        data = await response.json();
+      } catch {
+        setError(response.ok ? "Invalid response from server" : "Failed to create template");
+        return;
+      }
 
       if (!response.ok) {
         setError(data.error || "Failed to create template");
         return;
       }
 
-      if (pendingImageFile) {
+      if (pendingImageFile && data.id) {
         const formData = new FormData();
         formData.append("file", pendingImageFile);
-        const imageRes = await fetch(`/api/templates/${data.id}/image`, {
-          method: "POST",
-          body: formData,
-        });
-        if (!imageRes.ok) {
-          const imageData = await imageRes.json().catch(() => ({}));
-          setError(imageData.error || "Template created, but image upload failed.");
+        const imageAbort = new AbortController();
+        const imageTimeout = setTimeout(() => imageAbort.abort(), 60_000);
+        try {
+          const imageRes = await fetch(`/api/templates/${data.id}/image`, {
+            method: "POST",
+            body: formData,
+            signal: imageAbort.signal,
+          });
+          if (!imageRes.ok) {
+            const imageData = await imageRes.json().catch(() => ({}));
+            setError((imageData as { error?: string }).error || "Template created, but image upload failed.");
+            return;
+          }
+        } catch (imgErr) {
+          if (imgErr instanceof Error && imgErr.name === "AbortError") {
+            setError("Image upload took too long. Template was created.");
+          } else {
+            setError("Template created, but image upload failed.");
+          }
+          return;
+        } finally {
+          clearTimeout(imageTimeout);
         }
       }
 
       router.push(`/template/${data.slug}`);
     } catch (err) {
       console.error("Error creating template:", err);
-      setError("An unexpected error occurred");
+      if (err instanceof Error && err.name === "AbortError") {
+        setError("Request took too long. Please try again.");
+      } else {
+        setError("An unexpected error occurred");
+      }
     } finally {
       setLoading(false);
     }
