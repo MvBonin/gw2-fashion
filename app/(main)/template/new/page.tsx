@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import TagInput from "@/components/templates/TagInput";
 import ImageUpload from "@/components/templates/ImageUpload";
+import PendingExtraImageSlot from "@/components/templates/PendingExtraImageSlot";
 
 type ArmorType = "light" | "medium" | "heavy";
+type ExtraPosition = 1 | 2 | 3;
+const EXTRA_POSITIONS: ExtraPosition[] = [1, 2, 3];
 
 export default function NewTemplatePage() {
   const router = useRouter();
@@ -22,6 +25,27 @@ export default function NewTemplatePage() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
+  const [pendingExtraFiles, setPendingExtraFiles] = useState<Record<ExtraPosition, File | null>>({
+    1: null,
+    2: null,
+    3: null,
+  });
+  const [pendingExtraPreviewUrls, setPendingExtraPreviewUrls] = useState<
+    Record<ExtraPosition, string | null>
+  >({ 1: null, 2: null, 3: null });
+
+  const extraPreviewUrlsRef = useRef(pendingExtraPreviewUrls);
+  useEffect(() => {
+    extraPreviewUrlsRef.current = pendingExtraPreviewUrls;
+  }, [pendingExtraPreviewUrls]);
+  useEffect(() => {
+    return () => {
+      EXTRA_POSITIONS.forEach((pos) => {
+        const url = extraPreviewUrlsRef.current[pos];
+        if (url) URL.revokeObjectURL(url);
+      });
+    };
+  }, []);
 
   const handleFileReady = useCallback((file: File) => {
     setPendingImagePreviewUrl((prev) => {
@@ -37,6 +61,24 @@ export default function NewTemplatePage() {
     setPendingImageFile(null);
   }, [pendingImagePreviewUrl]);
 
+  const handleExtraFileSelect = useCallback((position: ExtraPosition, file: File) => {
+    setPendingExtraPreviewUrls((prev) => {
+      const old = prev[position];
+      if (old) URL.revokeObjectURL(old);
+      return { ...prev, [position]: URL.createObjectURL(file) };
+    });
+    setPendingExtraFiles((prev) => ({ ...prev, [position]: file }));
+  }, []);
+
+  const handleExtraRemove = useCallback((position: ExtraPosition) => {
+    setPendingExtraPreviewUrls((prev) => {
+      const old = prev[position];
+      if (old) URL.revokeObjectURL(old);
+      return { ...prev, [position]: null };
+    });
+    setPendingExtraFiles((prev) => ({ ...prev, [position]: null }));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -48,6 +90,7 @@ export default function NewTemplatePage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
+        setLoading(false);
         router.push("/login");
         return;
       }
@@ -57,6 +100,7 @@ export default function NewTemplatePage() {
 
       let response: Response;
       try {
+        console.log("[create] client: sending request…");
         response = await fetch("/api/templates/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -65,7 +109,7 @@ export default function NewTemplatePage() {
             fashion_code: fashionCode.trim(),
             armor_type: armorType,
             description: description.trim() || null,
-            tags: tags.length > 0 ? tags : null,
+            tags,
             is_private: isPrivate,
           }),
           signal: createAbort.signal,
@@ -74,18 +118,25 @@ export default function NewTemplatePage() {
         clearTimeout(createTimeout);
       }
 
+      console.log("[create] client: got response", response.status);
+
       let data: { id?: string; slug?: string; error?: string };
       try {
         data = await response.json();
       } catch {
+        setLoading(false);
         setError(response.ok ? "Invalid response from server" : "Failed to create template");
         return;
       }
 
       if (!response.ok) {
+        console.log("[create] client: error", data.error);
+        setLoading(false);
         setError(data.error || "Failed to create template");
         return;
       }
+
+      console.log("[create] client: template created", data.id);
 
       if (pendingImageFile && data.id) {
         const formData = new FormData();
@@ -100,10 +151,12 @@ export default function NewTemplatePage() {
           });
           if (!imageRes.ok) {
             const imageData = await imageRes.json().catch(() => ({}));
+            setLoading(false);
             setError((imageData as { error?: string }).error || "Template created, but image upload failed.");
             return;
           }
         } catch (imgErr) {
+          setLoading(false);
           if (imgErr instanceof Error && imgErr.name === "AbortError") {
             setError("Image upload took too long. Template was created.");
           } else {
@@ -115,16 +168,53 @@ export default function NewTemplatePage() {
         }
       }
 
+      for (const pos of EXTRA_POSITIONS) {
+        const file = pendingExtraFiles[pos];
+        if (!file || !data.id) continue;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("position", String(pos));
+
+        const extraAbort = new AbortController();
+        const extraTimeout = setTimeout(() => extraAbort.abort(), 60_000);
+        try {
+          const extraRes = await fetch(`/api/templates/${data.id}/extra-image`, {
+            method: "POST",
+            body: formData,
+            signal: extraAbort.signal,
+          });
+          if (!extraRes.ok) {
+            const extraData = await extraRes.json().catch(() => ({}));
+            setLoading(false);
+            setError(
+              (extraData as { error?: string }).error ||
+                `Template was created, but extra image ${pos} could not be uploaded.`
+            );
+            return;
+          }
+        } catch (extraErr) {
+          setLoading(false);
+          if (extraErr instanceof Error && extraErr.name === "AbortError") {
+            setError("Template was created, but an extra image upload took too long.");
+          } else {
+            setError(`Template was created, but extra image ${pos} could not be uploaded.`);
+          }
+          return;
+        } finally {
+          clearTimeout(extraTimeout);
+        }
+      }
+
       router.push(`/template/${data.slug}`);
     } catch (err) {
       console.error("Error creating template:", err);
+      setLoading(false);
       if (err instanceof Error && err.name === "AbortError") {
         setError("Request took too long. Please try again.");
       } else {
         setError("An unexpected error occurred");
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -238,7 +328,7 @@ export default function NewTemplatePage() {
               onChange={(e) => setIsPrivate(e.target.checked)}
               className="checkbox"
             />
-            <span className="label-text">Create as private (only visible to me)</span>
+            <span className="label-text">Create as private (only visible to yourself)</span>
           </label>
           <p className="text-sm text-base-content/60 mt-1">
             Private templates do not appear on the homepage or your public profile.
@@ -259,6 +349,27 @@ export default function NewTemplatePage() {
               Remove image
             </button>
           )}
+        </div>
+
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-semibold">Additional images (optional)</span>
+          </label>
+          <p className="text-sm text-base-content/70 mb-2">
+            Up to 3 more images. Only the main image appears on the card.
+          </p>
+          <div className="flex flex-wrap gap-6">
+            {EXTRA_POSITIONS.map((pos) => (
+              <PendingExtraImageSlot
+                key={pos}
+                position={pos}
+                file={pendingExtraFiles[pos]}
+                previewUrl={pendingExtraPreviewUrls[pos]}
+                onFileSelect={(file) => handleExtraFileSelect(pos, file)}
+                onRemove={() => handleExtraRemove(pos)}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Submit Button */}

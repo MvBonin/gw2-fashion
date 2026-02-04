@@ -1,25 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { generateTemplateSlug } from "@/lib/utils/slug";
-import { getOrCreateTagIds, normalizeTagName } from "@/lib/utils/tags";
+import { normalizeTagName } from "@/lib/utils/tags";
 import type { Database } from "@/types/database.types";
 
-type UserUsername = Pick<
-  Database["public"]["Tables"]["users"]["Row"],
-  "username"
->;
-type TemplatesInsert = Database["public"]["Tables"]["templates"]["Insert"];
-type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];
-
 export async function POST(request: Request) {
+  const t0 = Date.now();
   try {
     const supabase = await createClient();
+    console.log("[create] createClient:", Date.now() - t0, "ms");
 
-    // Check authentication (session from cookies; middleware already ran without profile fetch)
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+    console.log("[create] getUser:", Date.now() - t0, "ms");
 
     if (authError || !user) {
       return NextResponse.json(
@@ -28,25 +22,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get user profile for username
-    const { data: profileData, error: profileError } = await supabase
-      .from("users")
-      .select("username")
-      .eq("id", user.id)
-      .single();
-
-    const profile: UserUsername | null = profileData as UserUsername | null;
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: "User profile not found" },
-        { status: 404 }
-      );
-    }
-
     const body = await request.json();
+    console.log("[create] request.json:", Date.now() - t0, "ms");
     const { name, fashion_code, armor_type, description, tags, is_private } = body;
 
-    // Validation
     if (!name || typeof name !== "string" || name.trim().length < 3) {
       return NextResponse.json(
         { error: "Template name must be at least 3 characters" },
@@ -71,51 +50,52 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate slug (single roundtrip)
-    const slug = await generateTemplateSlug(supabase, profile.username, name.trim());
+    const tagNames =
+      Array.isArray(tags) && tags.length > 0
+        ? [...new Set(tags.map((t: unknown) => (typeof t === "string" ? normalizeTagName(t) : "")).filter(Boolean))]
+        : [];
 
-    // Create template (no tags column)
-    const insertPayload: TemplatesInsert = {
-      user_id: user.id,
-      name: name.trim(),
-      slug,
-      fashion_code: fashion_code.trim(),
-      armor_type,
-      description: description?.trim() || null,
-      is_private: Boolean(is_private),
-    };
-    const { data: templateData, error: createError } = await supabase
-      .from("templates")
-      .insert(insertPayload)
-      .select()
-      .single();
+    const { data: rows, error: rpcError } = await supabase.rpc("create_template_with_tags", {
+      p_user_id: user.id,
+      p_name: name.trim(),
+      p_fashion_code: fashion_code.trim(),
+      p_armor_type: armor_type,
+      p_description: description != null && typeof description === "string" ? description.trim() || null : null,
+      p_is_private: Boolean(is_private),
+      p_tag_names: tagNames,
+    });
 
-    const template: TemplateRow | null = templateData as TemplateRow | null;
-    if (createError || !template) {
-      console.error("Error creating template:", createError);
+    console.log("[create] create_template_with_tags RPC:", Date.now() - t0, "ms");
+
+    if (rpcError) {
+      const msg = rpcError.message ?? "Failed to create template";
+      if (rpcError.code === "PGRST301" || msg.includes("User profile not found")) {
+        return NextResponse.json({ error: "User profile not found" }, { status: 404 });
+      }
+      if (msg.includes("Unauthorized")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      console.error("Error in create_template_with_tags:", rpcError);
+      return NextResponse.json(
+        { error: msg },
+        { status: 500 }
+      );
+    }
+
+    const row = (Array.isArray(rows) ? rows[0] : rows) as { id: string; slug: string } | undefined;
+    if (!row?.id || !row?.slug) {
+      console.error("create_template_with_tags returned no row:", rows);
       return NextResponse.json(
         { error: "Failed to create template" },
         { status: 500 }
       );
     }
 
-    // Get-or-create tags and link via template_tags (batch)
-    const tagNames =
-      Array.isArray(tags) && tags.length > 0
-        ? [...new Set(tags.map((t: unknown) => (typeof t === "string" ? normalizeTagName(t) : "")).filter(Boolean))]
-        : [];
-    const tagIdMap = await getOrCreateTagIds(supabase, tagNames);
-    const templateTagRows = tagNames
-      .map((name) => ({ template_id: template.id, tag_id: tagIdMap.get(name) }))
-      .filter((row): row is { template_id: string; tag_id: string } => row.tag_id != null);
-    if (templateTagRows.length > 0) {
-      await supabase.from("template_tags").insert(templateTagRows);
-    }
-
+    console.log("[create] total:", Date.now() - t0, "ms");
     return NextResponse.json({
       success: true,
-      slug: template.slug,
-      id: template.id,
+      slug: row.slug,
+      id: row.id,
     });
   } catch (error) {
     console.error("Error in template creation:", error);

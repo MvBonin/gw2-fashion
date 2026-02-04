@@ -100,9 +100,9 @@ export default function TagInput({
       return;
     }
     if (e.key === "Enter") {
-      e.preventDefault();
       const trimmed = input.trim();
       if (trimmed) {
+        e.preventDefault();
         const match = suggestions.find(
           (s) => s.name.toLowerCase() === trimmed.toLowerCase()
         );

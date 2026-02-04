@@ -226,6 +226,24 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      create_template_with_tags: {
+        Args: {
+          p_user_id: string;
+          p_name: string;
+          p_fashion_code: string;
+          p_armor_type: "light" | "medium" | "heavy";
+          p_description?: string | null;
+          p_is_private?: boolean;
+          p_tag_names?: string[] | null;
+        };
+        Returns: { id: string; slug: string }[];
+      };
+      get_or_create_tag_ids: {
+        Args: {
+          tag_names: string[];
+        };
+        Returns: { id: string; name: string }[];
+      };
       username_exists: {
         Args: {
           check_username: string;

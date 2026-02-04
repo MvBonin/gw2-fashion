@@ -6,8 +6,8 @@ export function normalizeTagName(name: string): string {
 }
 
 /**
- * Resolve tag names to tag IDs (batch: 1 SELECT + optional 1 upsert).
- * Returns a Map name -> id for all given names (only includes resolved ids).
+ * Resolve tag names to tag IDs in a single DB roundtrip (RPC).
+ * Returns a Map name -> id for all given names.
  */
 export async function getOrCreateTagIds(
   supabase: SupabaseClient<Database>,
@@ -16,25 +16,16 @@ export async function getOrCreateTagIds(
   const idMap = new Map<string, string>();
   if (tagNames.length === 0) return idMap;
 
-  const { data: existing } = await supabase
-    .from("tags")
-    .select("id, name")
-    .in("name", tagNames);
+  const { data: rows, error } = await supabase.rpc("get_or_create_tag_ids", {
+    tag_names: tagNames,
+  });
 
-  for (const row of existing ?? []) {
-    idMap.set(row.name, row.id);
+  if (error) {
+    throw new Error(`get_or_create_tag_ids: ${error.message}`);
   }
 
-  const missing = tagNames.filter((n) => !idMap.has(n));
-  if (missing.length > 0) {
-    const { data: upserted } = await supabase
-      .from("tags")
-      .upsert(missing.map((name) => ({ name })), { onConflict: "name" })
-      .select("id, name");
-
-    for (const row of upserted ?? []) {
-      idMap.set(row.name, row.id);
-    }
+  for (const row of (rows ?? []) as { id: string; name: string }[]) {
+    idMap.set(row.name, row.id);
   }
 
   return idMap;

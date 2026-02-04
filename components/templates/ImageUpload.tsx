@@ -132,7 +132,7 @@ export default function ImageUpload({
             className="btn btn-primary"
             onClick={() => fileInputRef.current?.click()}
           >
-            {currentImageUrl ? "Change image" : "Upload image"}
+            {currentImageUrl ? "Change cover image" : "Upload cover image"}
           </button>
         </div>
       </div>
