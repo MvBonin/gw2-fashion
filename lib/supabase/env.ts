@@ -24,3 +24,11 @@ export function getSupabaseAnonKey(): string {
   }
   return key;
 }
+
+/**
+ * Service Role Key für Server-only Aktionen, die RLS umgehen müssen
+ * (z. B. Fallback beim Copy-Count). Nicht im Client exponieren.
+ */
+export function getSupabaseServiceRoleKey(): string | undefined {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY;
+}

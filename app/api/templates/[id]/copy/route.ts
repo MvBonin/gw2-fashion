@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 import type { Database } from "@/types/database.types";
 
 type TemplateRow = Database["public"]["Tables"]["templates"]["Row"];
 type TemplatesUpdate = Database["public"]["Tables"]["templates"]["Update"];
-type TemplateCopyCountRow = Pick<TemplateRow, "copy_count" | "user_id">;
+type TemplateCopyCountRow = Pick<TemplateRow, "copy_count">;
 
 interface RouteParams {
   params: Promise<{
@@ -20,13 +21,9 @@ export async function POST(
     const { id } = await params;
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     const { data, error: fetchError } = await supabase
       .from("templates")
-      .select("copy_count, user_id")
+      .select("copy_count")
       .eq("id", id)
       .single();
 
@@ -38,10 +35,7 @@ export async function POST(
       );
     }
 
-    if (user?.id === template.user_id) {
-      return NextResponse.json({ success: true });
-    }
-
+    // Jeder darf zählen (auch uneingeloggte Nutzer). Deduplizierung „schon kopiert“ passiert im Frontend (getCopiedIds).
     // Supabase client infers rpc() second arg as undefined; Database.Functions is correct
     const { error } = await supabase.rpc("increment_copy_count", {
       template_id: id,
@@ -51,7 +45,9 @@ export async function POST(
       const updatePayload: TemplatesUpdate = {
         copy_count: template.copy_count + 1,
       };
-      const { error: updateError } = await supabase
+      const serviceClient = await createServiceClient();
+      const updateClient = serviceClient ?? supabase;
+      const { error: updateError } = await updateClient
         .from("templates")
         .update(updatePayload)
         .eq("id", id);

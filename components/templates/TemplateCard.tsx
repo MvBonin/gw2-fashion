@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/client";
 import { abbreviateFashionCode, copyToClipboard } from "@/lib/utils/fashionCode";
 import { getCopiedIds, addCopiedId } from "@/lib/utils/trackingStorage";
 import FavouriteButton from "@/components/templates/FavouriteButton";
@@ -58,18 +57,13 @@ export default function TemplateCard({
     try {
       await copyToClipboard(fashion_code);
 
-      const supabase = createClient();
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
-      const isOwner = templateUserId && currentUser?.id === templateUserId;
       const alreadyCopied = getCopiedIds().includes(id);
-
-      if (!isOwner && !alreadyCopied) {
+      if (!alreadyCopied) {
         const res = await fetch(`/api/templates/${id}/copy`, {
           method: "POST",
         });
         if (res.ok) addCopiedId(id);
+        else console.warn("Copy tracking failed:", res.status);
       }
 
       setCopied(true);

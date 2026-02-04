@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { copyToClipboard } from "@/lib/utils/fashionCode";
 import { getCopiedIds, addCopiedId } from "@/lib/utils/trackingStorage";
 import type { SkinsAndColorsEntry } from "@/lib/gw2/gw2Api";
@@ -30,18 +29,13 @@ export default function TemplateDetailClient({
     try {
       await copyToClipboard(fashionCode);
 
-      const supabase = createClient();
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
-      const isOwner = templateUserId && currentUser?.id === templateUserId;
       const alreadyCopied = getCopiedIds().includes(templateId);
-
-      if (!isOwner && !alreadyCopied) {
+      if (!alreadyCopied) {
         const res = await fetch(`/api/templates/${templateId}/copy`, {
           method: "POST",
         });
         if (res.ok) addCopiedId(templateId);
+        else console.warn("Copy tracking failed:", res.status);
       }
 
       setCopied(true);
