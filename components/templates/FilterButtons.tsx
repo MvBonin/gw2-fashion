@@ -31,6 +31,8 @@ export default function FilterButtons({
     if (tag) params.set("tag", tag);
     const author = searchParams.get("author");
     if (author) params.set("author", author);
+    const visibility = searchParams.get("visibility");
+    if (visibility) params.set("visibility", visibility);
     if (armor) params.set("armor", armor);
     if (showSort && sort) params.set("sort", sort);
     params.set("page", "1");

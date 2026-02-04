@@ -25,7 +25,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     supabase
       .from("templates")
       .select("slug, updated_at")
-      .eq("active", true),
+      .eq("active", true)
+      .eq("is_private", false),
     supabase.from("users").select("username"),
   ]);
 

@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, fashion_code, armor_type, description, tags } = body;
+    const { name, fashion_code, armor_type, description, tags, is_private } = body;
 
     // Validation
     if (!name || typeof name !== "string" || name.trim().length < 3) {
@@ -111,6 +111,7 @@ export async function POST(request: Request) {
       fashion_code: fashion_code.trim(),
       armor_type,
       description: description?.trim() || null,
+      is_private: Boolean(is_private),
     };
     const { data: templateData, error: createError } = await supabase
       .from("templates")

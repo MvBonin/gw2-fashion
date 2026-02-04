@@ -19,6 +19,7 @@ export default function NewTemplatePage() {
   const [armorType, setArmorType] = useState<ArmorType>("light");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
 
@@ -62,6 +63,7 @@ export default function NewTemplatePage() {
           armor_type: armorType,
           description: description.trim() || null,
           tags: tags.length > 0 ? tags : null,
+          is_private: isPrivate,
         }),
       });
 
@@ -194,6 +196,21 @@ export default function NewTemplatePage() {
             onChange={setTags}
             placeholder="z.B. dark, thief, shadow – tippen für Vorschläge"
           />
+        </div>
+
+        <div className="form-control">
+          <label className="label cursor-pointer justify-start gap-2">
+            <input
+              type="checkbox"
+              checked={isPrivate}
+              onChange={(e) => setIsPrivate(e.target.checked)}
+              className="checkbox"
+            />
+            <span className="label-text">Create as private (only visible to me)</span>
+          </label>
+          <p className="text-sm text-base-content/60 mt-1">
+            Private templates do not appear on the homepage or your public profile.
+          </p>
         </div>
 
         <div className="form-control flex flex-col gap-2">

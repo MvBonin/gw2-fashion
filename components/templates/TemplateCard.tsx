@@ -24,6 +24,7 @@ interface TemplateCardProps {
   } | null;
   templateUserId?: string | null;
   tags?: string[];
+  isPrivate?: boolean;
 }
 
 const MAX_VISIBLE_TAGS = 4;
@@ -42,6 +43,7 @@ export default function TemplateCard({
   user,
   templateUserId,
   tags = [],
+  isPrivate = false,
 }: TemplateCardProps) {
   const [copied, setCopied] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
@@ -122,6 +124,11 @@ export default function TemplateCard({
             {armor_type}
           </span>
         </div>
+        {isPrivate && (
+          <div className="absolute bottom-1 right-1">
+            <span className="badge badge-ghost badge-xs opacity-90">Private</span>
+          </div>
+        )}
       </figure>
       <div className="card-body p-2 sm:p-3">
         <h2 className="card-title text-sm line-clamp-1" title={name}>{name}</h2>

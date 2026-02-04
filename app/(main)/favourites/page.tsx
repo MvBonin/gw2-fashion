@@ -94,6 +94,7 @@ export default async function FavouritesPage({ searchParams }: FavouritesPagePro
       favourite_count,
       created_at,
       user_id,
+      is_private,
       users(username),
       template_tags(tags(name))
     `;
@@ -185,6 +186,7 @@ export default async function FavouritesPage({ searchParams }: FavouritesPagePro
                 user={template.users}
                 templateUserId={template.user_id ?? null}
                 tags={templateTagsToNames(template.template_tags)}
+                isPrivate={template.is_private}
               />
             ))}
           </div>

@@ -19,6 +19,7 @@ interface TemplateEditFormProps {
   initialDescription: string;
   initialTags: string[];
   initialImageUrl: string | null;
+  initialIsPrivate: boolean;
   initialExtraImages?: ExtraImage[];
 }
 
@@ -40,6 +41,7 @@ export default function TemplateEditForm({
   initialDescription,
   initialTags,
   initialImageUrl,
+  initialIsPrivate,
   initialExtraImages,
 }: TemplateEditFormProps) {
   const router = useRouter();
@@ -55,6 +57,8 @@ export default function TemplateEditForm({
   const [armorType, setArmorType] = useState<ArmorType>(initialArmorType);
   const [description, setDescription] = useState(initialDescription);
   const [tags, setTags] = useState<string[]>(initialTags);
+  const [isPrivate, setIsPrivate] = useState(initialIsPrivate);
+  const [updatingPrivate, setUpdatingPrivate] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +91,27 @@ export default function TemplateEditForm({
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTogglePrivate = async () => {
+    const nextPrivate = !isPrivate;
+    const message = nextPrivate
+      ? "Make this template private? Only you will be able to see it."
+      : "Make this template public? It will appear on your profile and in search.";
+    if (!window.confirm(message)) return;
+    setUpdatingPrivate(true);
+    try {
+      const res = await fetch(`/api/templates/${templateId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_private: nextPrivate }),
+      });
+      if (res.ok) setIsPrivate(nextPrivate);
+    } catch (err) {
+      console.error("Toggle private failed:", err);
+    } finally {
+      setUpdatingPrivate(false);
     }
   };
 
@@ -210,6 +235,22 @@ export default function TemplateEditForm({
             onChange={setTags}
             placeholder="z.B. dark, thief, shadow – tippen für Vorschläge"
           />
+        </div>
+
+        <div className="form-control">
+          <label className="label cursor-pointer justify-start gap-2">
+            <input
+              type="checkbox"
+              checked={isPrivate}
+              onChange={handleTogglePrivate}
+              disabled={updatingPrivate}
+              className="checkbox"
+            />
+            <span className="label-text">Private template (only visible to me)</span>
+          </label>
+          <p className="text-sm text-base-content/60 mt-1">
+            Private templates do not appear on the homepage, your public profile, or in search.
+          </p>
         </div>
 
         <div className="form-control mt-8">

@@ -27,6 +27,7 @@ type TemplateDetail = Pick<
   | "favourite_count"
   | "created_at"
   | "user_id"
+  | "is_private"
 > & {
   users: { id: string; username: string } | null;
   template_tags?: { tags: { name: string } | null }[] | null;
@@ -113,6 +114,7 @@ export default async function TemplateDetailPage({
       favourite_count,
       created_at,
       user_id,
+      is_private,
       users(id, username),
       template_tags(tags(name)),
       template_extra_images(position, image_url)
@@ -198,6 +200,7 @@ export default async function TemplateDetailPage({
           templateId={template.id}
           slug={template.slug}
           isOwner={isOwner}
+          isPrivate={template.is_private}
           variant="header"
         />
       </header>

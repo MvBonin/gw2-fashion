@@ -75,7 +75,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { name, fashion_code, armor_type, description, tags, image_url, active } = body;
+    const { name, fashion_code, armor_type, description, tags, image_url, active, is_private } = body;
 
     // Soft delete: only set active = false
     if (active === false) {
@@ -143,6 +143,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         typeof image_url === "string" && image_url.trim().length > 0
           ? image_url.trim()
           : null;
+    }
+
+    if (is_private !== undefined) {
+      updates.is_private = Boolean(is_private);
     }
 
     // Update template fields if any

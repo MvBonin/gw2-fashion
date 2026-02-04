@@ -32,6 +32,7 @@ interface ProfilePageProps {
   searchParams: Promise<{
     armor?: string;
     page?: string;
+    visibility?: string;
   }>;
 }
 
@@ -58,6 +59,11 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     paramsQuery.armor === "light" || paramsQuery.armor === "medium" || paramsQuery.armor === "heavy"
       ? paramsQuery.armor
       : null;
+
+  const visibility =
+    paramsQuery.visibility === "public" || paramsQuery.visibility === "private"
+      ? paramsQuery.visibility
+      : "all";
 
   const pageRaw = paramsQuery.page ? parseInt(paramsQuery.page, 10) : 1;
   const page = Number.isNaN(pageRaw) || pageRaw < 1 ? 1 : pageRaw;
@@ -89,6 +95,11 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     notFound();
   }
 
+  const {
+    data: { user: currentUser },
+  } = await supabase.auth.getUser();
+  const isOwnProfile = Boolean(currentUser && currentUser.id === user.id);
+
   // Total design count (all armor types) for sidebar
   const { count: totalDesignCount } = await supabase
     .from("templates")
@@ -108,6 +119,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
       copy_count,
       favourite_count,
       user_id,
+      is_private,
       users(username),
       template_tags(tags(name))
     `;
@@ -119,6 +131,12 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     .in("armor_type", ["light", "medium", "heavy"])
     .order("created_at", { ascending: false });
 
+  if (isOwnProfile && visibility === "public") {
+    templatesQuery = templatesQuery.eq("is_private", false);
+  }
+  if (isOwnProfile && visibility === "private") {
+    templatesQuery = templatesQuery.eq("is_private", true);
+  }
   if (armorFilter) {
     templatesQuery = templatesQuery.eq("armor_type", armorFilter);
   }
@@ -140,6 +158,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     const targetPage = page < 1 ? 1 : totalPages;
     const redirectParams = new URLSearchParams();
     if (armorFilter) redirectParams.set("armor", armorFilter);
+    if (isOwnProfile && visibility !== "all") redirectParams.set("visibility", visibility);
     redirectParams.set("page", String(targetPage));
     redirect(`/profile/${username.toLowerCase()}?${redirectParams.toString()}`);
   }
@@ -148,9 +167,6 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
 
   // For logged-in user: which of these templates are favourited?
   let favouritedTemplateIds = new Set<string>();
-  const {
-    data: { user: currentUser },
-  } = await supabase.auth.getUser();
   if (currentUser && templatesList.length > 0) {
     const { data: favourites } = await supabase
       .from("template_favourites")
@@ -177,6 +193,37 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
               : `${from + 1}–${Math.min(from + templatesList.length, from + TEMPLATES_PAGE_SIZE)} of ${totalCount} templates`}
           </p>
         </div>
+        {isOwnProfile && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className="text-sm text-base-content/60">Visibility:</span>
+            <div className="join">
+              <a
+                href={`/profile/${username.toLowerCase()}${armorFilter ? `?armor=${armorFilter}` : ""}`}
+                className={`join-item btn btn-sm ${visibility === "all" ? "btn-active" : ""}`}
+              >
+                All
+              </a>
+              <a
+                href={`/profile/${username.toLowerCase()}?${new URLSearchParams({
+                  ...(armorFilter ? { armor: armorFilter } : {}),
+                  visibility: "public",
+                }).toString()}`}
+                className={`join-item btn btn-sm ${visibility === "public" ? "btn-active" : ""}`}
+              >
+                Public
+              </a>
+              <a
+                href={`/profile/${username.toLowerCase()}?${new URLSearchParams({
+                  ...(armorFilter ? { armor: armorFilter } : {}),
+                  visibility: "private",
+                }).toString()}`}
+                className={`join-item btn btn-sm ${visibility === "private" ? "btn-active" : ""}`}
+              >
+                Private
+              </a>
+            </div>
+          </div>
+        )}
         <FilterButtons
           armorFilter={armorFilter}
           sortOption="new"
@@ -204,6 +251,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                   user={template.users}
                   templateUserId={template.user_id ?? null}
                   tags={templateTagsToNames(template.template_tags)}
+                  isPrivate={template.is_private}
                 />
               ))}
             </div>
@@ -214,7 +262,10 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                 totalCount={totalCount}
                 pageSize={TEMPLATES_PAGE_SIZE}
                 basePath={`/profile/${username.toLowerCase()}`}
-                searchParams={armorFilter ? { armor: armorFilter } : {}}
+                searchParams={{
+                  ...(armorFilter ? { armor: armorFilter } : {}),
+                  ...(isOwnProfile && visibility !== "all" ? { visibility } : {}),
+                }}
               />
             )}
           </>
