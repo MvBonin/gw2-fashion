@@ -28,7 +28,8 @@ SET search_path = public
 AS $$
 BEGIN
   UPDATE templates
-  SET favourite_count_last_7d = 0, favourite_count_last_30d = 0, favourite_count_last_90d = 0;
+  SET favourite_count_last_7d = 0, favourite_count_last_30d = 0, favourite_count_last_90d = 0
+  WHERE true;
 
   WITH buckets AS (
     SELECT
