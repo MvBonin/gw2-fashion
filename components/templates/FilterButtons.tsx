@@ -40,53 +40,45 @@ export default function FilterButtons({
 
   return (
     <div className="flex flex-wrap gap-4 mb-6">
-      {/* Armor Type Filters */}
-      <div className="join">
+      {/* Armor Type Filters: 2x2 grid on mobile, join row on md+ */}
+      <div className="grid grid-cols-2 gap-2 md:join">
         <button
           type="button"
           onClick={() => updateFilter(null, sortOption)}
-          className={`join-item btn ${
-            !armorFilter ? "btn-active" : ""
-          }`}
+          className={`join-item btn ${!armorFilter ? "btn-active" : ""}`}
         >
           All Armor
         </button>
         <button
           type="button"
           onClick={() => updateFilter("light", sortOption)}
-          className={`join-item btn ${
-            armorFilter === "light" ? "btn-active" : ""
-          }`}
+          className={`join-item btn ${armorFilter === "light" ? "btn-active" : ""}`}
         >
           Light
         </button>
         <button
           type="button"
           onClick={() => updateFilter("medium", sortOption)}
-          className={`join-item btn ${
-            armorFilter === "medium" ? "btn-active" : ""
-          }`}
+          className={`join-item btn ${armorFilter === "medium" ? "btn-active" : ""}`}
         >
           Medium
         </button>
         <button
           type="button"
           onClick={() => updateFilter("heavy", sortOption)}
-          className={`join-item btn ${
-            armorFilter === "heavy" ? "btn-active" : ""
-          }`}
+          className={`join-item btn ${armorFilter === "heavy" ? "btn-active" : ""}`}
         >
           Heavy
         </button>
       </div>
 
-      {/* Sort Options (optional, e.g. hidden on profile) */}
+      {/* Sort Options: full width on mobile, join on md+ */}
       {showSort && (
-        <div className="join">
+        <div className="flex w-full md:w-auto md:join">
           <button
             type="button"
             onClick={() => updateFilter(armorFilter, "trending")}
-            className={`join-item btn ${
+            className={`join-item btn flex-1 md:flex-initial ${
               sortOption === "trending" ? "btn-active" : ""
             }`}
           >
@@ -95,7 +87,7 @@ export default function FilterButtons({
           <button
             type="button"
             onClick={() => updateFilter(armorFilter, "popular")}
-            className={`join-item btn ${
+            className={`join-item btn flex-1 md:flex-initial ${
               sortOption === "popular" ? "btn-active" : ""
             }`}
           >
@@ -104,7 +96,7 @@ export default function FilterButtons({
           <button
             type="button"
             onClick={() => updateFilter(armorFilter, "new")}
-            className={`join-item btn ${
+            className={`join-item btn flex-1 md:flex-initial ${
               sortOption === "new" ? "btn-active" : ""
             }`}
           >

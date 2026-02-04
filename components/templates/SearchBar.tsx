@@ -106,8 +106,8 @@ export default function SearchBar({ basePath = "/", showAuthor = true }: SearchB
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search for a blueprint…"
-          aria-label="Search for template"
+          placeholder="Search for a fashion template..."
+          aria-label="Search for fashion template"
           className="input input-bordered w-full pr-10 rounded-lg bg-base-200 border-base-300 text-base-content placeholder-base-content/50"
         />
         <span className={iconClass}>
@@ -135,8 +135,8 @@ export default function SearchBar({ basePath = "/", showAuthor = true }: SearchB
             type="search"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            placeholder="Search by author…"
-            aria-label="Search by author"
+            placeholder="Search for author…"
+            aria-label="Search for author"
             className="input input-bordered w-full pr-10 rounded-lg bg-base-200 border-base-300 text-base-content placeholder-base-content/50"
           />
           <span className={iconClass}>

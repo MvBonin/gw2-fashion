@@ -1,16 +1,29 @@
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import { createClient } from "@/lib/supabase/server";
+import MainLayoutWithDrawer from "@/components/layout/MainLayoutWithDrawer";
 
-export default function MainLayout({
+export default async function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let profile = null;
+  if (user) {
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    profile = data;
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-base-100">
-      <Header />
-      <main className="flex-1 container mx-auto px-4 py-8 bg-base-100">{children}</main>
-      <Footer />
-    </div>
+    <MainLayoutWithDrawer user={user} profile={profile}>
+      {children}
+    </MainLayoutWithDrawer>
   );
 }
