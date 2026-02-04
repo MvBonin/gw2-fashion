@@ -140,12 +140,14 @@ export default function TemplateCard({
             )}
           </div>
         )}
-        <div className="mt-1 join w-full flex min-w-0">
+        <p className="text-xs text-base-content/70 mt-4">Fashion Code:</p>
+
+        <div className="join w-full flex min-w-0 mb-4">
           <input
             type="text"
             readOnly
             disabled
-            className="input join-item flex-1 min-w-0 font-mono text-xs bg-base-200 border-base-300 truncate"
+            className="input join-item flex-1 min-w-0 font-mono text-xs bg-base-200 border-base-300 truncate h-5"
             value={abbreviatedCode}
             aria-label="Fashion code"
             onClick={(e) => e.stopPropagation()}
@@ -153,7 +155,7 @@ export default function TemplateCard({
           <button
             type="button"
             onClick={handleCopyCode}
-            className="btn btn-primary join-item btn-xs shrink-0"
+            className="btn btn-primary join-item btn-xs shrink-0 h-5"
             disabled={isCopying}
             title="Copy full code"
             data-umami-event="copy_code_card"
