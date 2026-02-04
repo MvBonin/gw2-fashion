@@ -1,0 +1,23 @@
+# Refreshes favourite buckets for trending (7d / 30d / 90d).
+# Runs every night at 04:00 UTC. Requires repo variable SITE_URL and secret CRON_SECRET.
+
+name: Update trending buckets
+
+on:
+  schedule:
+    # Täglich um 04:00 UTC
+    - cron: "0 4 * * *"
+  workflow_dispatch: # Manuell auslösbar
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call update-trending-buckets
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/update-trending-buckets"
