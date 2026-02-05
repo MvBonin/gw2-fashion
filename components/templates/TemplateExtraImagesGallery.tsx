@@ -27,7 +27,6 @@ export default function TemplateExtraImagesGallery({
   extraImages,
 }: TemplateExtraImagesGalleryProps) {
   const images = buildImages(mainImageUrl, extraImages ?? []);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const lightboxIndexRef = useRef(0);
   const [lightboxIndex, setLightboxIndexState] = useState(0);
@@ -39,30 +38,19 @@ export default function TemplateExtraImagesGallery({
     setLightboxIndexState(i);
   }, []);
 
-  const openLightbox = useCallback(() => {
+  const openLightbox = useCallback((index: number) => {
     if (images.length === 0) return;
     prevFocusRef.current = document.activeElement as HTMLElement | null;
-    setLightboxIndex(currentIndex);
+    setLightboxIndex(index);
     setLightboxOpen(true);
-  }, [images.length, currentIndex]);
+  }, [images.length]);
 
   const closeLightbox = useCallback(() => {
     setLightboxOpen(false);
-    setCurrentIndex(lightboxIndexRef.current);
     requestAnimationFrame(() => {
       prevFocusRef.current?.focus?.();
     });
   }, []);
-
-  const goPrev = useCallback(() => {
-    if (images.length <= 1) return;
-    setCurrentIndex((i) => (i - 1 + images.length) % images.length);
-  }, [images.length]);
-
-  const goNext = useCallback(() => {
-    if (images.length <= 1) return;
-    setCurrentIndex((i) => (i + 1) % images.length);
-  }, [images.length]);
 
   const goPrevLightbox = useCallback(() => {
     if (images.length <= 1) return;
@@ -73,23 +61,6 @@ export default function TemplateExtraImagesGallery({
     if (images.length <= 1) return;
     setLightboxIndex((lightboxIndexRef.current + 1) % images.length);
   }, [images.length]);
-
-  // Pfeiltasten in der Galerie (nur wenn Lightbox zu)
-  useEffect(() => {
-    if (lightboxOpen || images.length <= 1) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test((e.target as HTMLElement).tagName)) return;
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        goPrev();
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        goNext();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lightboxOpen, images.length, goPrev, goNext]);
 
   // Pfeiltasten + Escape in der Lightbox
   useEffect(() => {
@@ -114,7 +85,7 @@ export default function TemplateExtraImagesGallery({
   useEffect(() => {
     if (lightboxOpen && lightboxContentRef.current) {
       const focusable = lightboxContentRef.current.querySelector<HTMLElement>(
-        'button[aria-label="Previous image"], button[aria-label="Next image"]'
+        'button[aria-label="Previous image"], button[aria-label="Next image"], button[aria-label="Schließen"]'
       );
       focusable?.focus();
     }
@@ -122,87 +93,48 @@ export default function TemplateExtraImagesGallery({
 
   if (images.length === 0) return null;
 
-  const showNav = images.length > 1;
+  const coverUrl = images[0];
+  const hasMultipleImages = images.length > 1;
 
   return (
     <>
-      {/* Galerie: ein großes Bild + Pfeile */}
-      <div className="relative w-full aspect-[9/16] rounded-xl overflow-hidden ring-1 ring-base-300 shadow-lg bg-base-200">
-        <button
-          type="button"
-          className="absolute inset-0 w-full h-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
-          onClick={openLightbox}
-          aria-label="Open image in lightbox"
-        >
-          <Image
-            src={images[currentIndex]}
-            alt={currentIndex === 0 ? templateName : `${templateName} – view ${currentIndex + 1}`}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 1024px"
-            quality={100}
-            priority={currentIndex === 0}
-          />
-        </button>
+      {/* Cover: ein großes statisches Bild, keine Pfeile/Slider; Klick öffnet Lightbox (Vergrößern) */}
+      <button
+        type="button"
+        className="relative w-full aspect-[9/16] rounded-xl overflow-hidden ring-1 ring-base-300 shadow-lg bg-base-200 block cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-100"
+        onClick={() => openLightbox(0)}
+        aria-label="Bild vergrößern"
+      >
+        <Image
+          src={coverUrl}
+          alt={templateName}
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, 1024px"
+          quality={100}
+          priority
+        />
+      </button>
 
-        {showNav && (
-          <>
-            <button
-              type="button"
-              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 btn btn-circle btn-sm btn-ghost bg-base-content/20 hover:bg-base-content/30 text-base-100 border-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                goPrev();
-              }}
-              aria-label="Previous image"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 btn btn-circle btn-sm btn-ghost bg-base-content/20 hover:bg-base-content/30 text-base-100 border-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                goNext();
-              }}
-              aria-label="Next image"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Thumbnails */}
-      {showNav && (
+      {/* Thumbnails: nur bei mehreren Bildern; Klick öffnet Lightbox */}
+      {hasMultipleImages && (
         <div className="mt-4">
-          <p className="text-sm text-base-content/70 mb-2">More views</p>
-          <div className="flex flex-wrap gap-3">
+          <p className="text-sm font-medium text-base-content/70 mb-2">Weitere Ansichten</p>
+          <div className="flex flex-wrap gap-2">
             {images.map((url, idx) => (
               <button
                 key={idx}
                 type="button"
-                className={`relative w-20 h-20 rounded-lg overflow-hidden ring-2 shrink-0 focus:outline-none focus:ring-2 focus:ring-primary ${
-                  idx === currentIndex ? "ring-primary" : "ring-base-300 hover:ring-primary"
-                }`}
-                onClick={() => {
-                  setCurrentIndex(idx);
-                  setLightboxIndex(idx);
-                  setLightboxOpen(true);
-                }}
-                aria-label={idx === 0 ? "Main image" : `View ${idx + 1}`}
-                aria-current={idx === currentIndex ? "true" : undefined}
+                className="relative w-24 h-24 rounded-xl overflow-hidden ring-2 ring-base-300 hover:ring-primary focus:ring-2 focus:ring-primary focus:outline-none transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
+                onClick={() => openLightbox(idx)}
+                aria-label={idx === 0 ? "Hauptbild vergrößern" : `Ansicht ${idx + 1} vergrößern`}
               >
                 <Image
                   src={url}
-                  alt={idx === 0 ? templateName : `${templateName} – view ${idx + 1}`}
+                  alt={idx === 0 ? templateName : `${templateName} – Ansicht ${idx + 1}`}
                   fill
                   className="object-cover"
-                  sizes="160px"
+                  sizes="192px"
                   quality={100}
                 />
               </button>
@@ -211,62 +143,110 @@ export default function TemplateExtraImagesGallery({
         </div>
       )}
 
-      {/* Lightbox */}
+      {/* Lightbox: fast volle Breite/Höhe, DaisyUI */}
       {lightboxOpen && (
         <dialog
           open
-          className="modal modal-open"
+          className="modal modal-open bg-base-content/80"
           onClose={closeLightbox}
           aria-modal="true"
-          aria-label="Image lightbox"
+          aria-label="Bildergalerie"
         >
           <div
             ref={lightboxContentRef}
-            className="modal-box max-w-4xl w-full max-h-[90vh] p-0 overflow-hidden flex items-center gap-2"
+            className="modal-box max-w-none w-[95vw] h-[95vh] sm:w-[92vw] sm:h-[92vh] p-2 sm:p-4 gap-2 sm:gap-4 flex flex-col bg-base-100 shadow-2xl rounded-2xl border border-base-300"
             onClick={(e) => e.stopPropagation()}
           >
-            {showNav && (
+            {/* Header: Zähler + Schließen */}
+            <div className="flex items-center justify-between shrink-0 px-1">
+              <span className="text-sm font-medium text-base-content/70">
+                {lightboxIndex + 1} / {images.length}
+              </span>
               <button
                 type="button"
-                className="btn btn-circle btn-ghost shrink-0"
-                onClick={goPrevLightbox}
-                aria-label="Previous image"
+                className="btn btn-square btn-ghost btn-sm"
+                onClick={closeLightbox}
+                aria-label="Schließen"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            )}
-            <div className="relative w-full aspect-[9/16] max-h-[85vh] bg-base-300 flex-1 min-w-0">
-              <Image
-                src={images[lightboxIndex]}
-                alt={lightboxIndex === 0 ? templateName : `${templateName} – view ${lightboxIndex + 1}`}
-                fill
-                className="object-contain"
-                sizes="100vw"
-                quality={100}
-              />
             </div>
-            {showNav && (
-              <button
-                type="button"
-                className="btn btn-circle btn-ghost shrink-0"
-                onClick={goNextLightbox}
-                aria-label="Next image"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+
+            {/* Bildbereich: zentral, fast volle Höhe */}
+            <div className="relative flex-1 min-h-0 flex items-center justify-center gap-2 sm:gap-4">
+              {hasMultipleImages && (
+                <button
+                  type="button"
+                  className="btn btn-circle btn-ghost shrink-0 bg-base-200/80 hover:bg-base-300"
+                  onClick={goPrevLightbox}
+                  aria-label="Previous image"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              )}
+              <div className="relative w-full flex-1 min-w-0 h-full max-h-[calc(95vh-5rem)] bg-base-200 rounded-xl overflow-hidden">
+                <Image
+                  src={images[lightboxIndex]}
+                  alt={lightboxIndex === 0 ? templateName : `${templateName} – Ansicht ${lightboxIndex + 1}`}
+                  fill
+                  className="object-contain"
+                  sizes="95vw"
+                  quality={100}
+                />
+              </div>
+              {hasMultipleImages && (
+                <button
+                  type="button"
+                  className="btn btn-circle btn-ghost shrink-0 bg-base-200/80 hover:bg-base-300"
+                  onClick={goNextLightbox}
+                  aria-label="Next image"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Thumbnail-Streifen in der Lightbox (optional, für schnelles Springen) */}
+            {hasMultipleImages && images.length <= 8 && (
+              <div className="flex justify-center gap-1.5 shrink-0 overflow-x-auto py-2">
+                {images.map((url, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`relative w-12 h-12 rounded-lg overflow-hidden shrink-0 transition-all ${
+                      idx === lightboxIndex
+                        ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100"
+                        : "opacity-70 hover:opacity-100"
+                    }`}
+                    onClick={() => setLightboxIndex(idx)}
+                    aria-label={`Zu Ansicht ${idx + 1}`}
+                    aria-current={idx === lightboxIndex ? "true" : undefined}
+                  >
+                    <Image
+                      src={url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="96px"
+                    />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
           <div
-            className="modal-backdrop"
+            className="modal-backdrop bg-black/70"
             onClick={closeLightbox}
             onKeyDown={(e) => e.key === "Escape" && closeLightbox()}
             role="button"
             tabIndex={0}
-            aria-label="Close"
+            aria-label="Schließen"
           />
         </dialog>
       )}
