@@ -87,12 +87,22 @@ export default function NewTemplatePage() {
     setLoading(true);
 
     try {
+      const SESSION_CHECK_TIMEOUT_MS = 8000;
+      const userResult = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("SESSION_TIMEOUT")),
+            SESSION_CHECK_TIMEOUT_MS
+          )
+        ),
+      ]);
+
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = userResult;
 
       if (!user) {
-        setLoading(false);
         router.push("/login");
         return;
       }
@@ -211,12 +221,15 @@ export default function NewTemplatePage() {
       router.push(`/template/${data.slug}`);
     } catch (err) {
       console.error("Error creating template:", err);
-      setLoading(false);
-      if (err instanceof Error && err.name === "AbortError") {
+      if (err instanceof Error && err.message === "SESSION_TIMEOUT") {
+        setError("Session check timed out. Please refresh the page and try again.");
+      } else if (err instanceof Error && err.name === "AbortError") {
         setError("Request took too long. Please try again.");
       } else {
         setError("An unexpected error occurred");
       }
+    } finally {
+      setLoading(false);
     }
   };
 

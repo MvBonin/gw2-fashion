@@ -1,8 +1,17 @@
 import type { Database } from "@/types/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/** Max length for a single tag name (DB and UX) */
+export const MAX_TAG_NAME_LENGTH = 50;
+
 export function normalizeTagName(name: string): string {
   return name.trim().toLowerCase();
+}
+
+/** Returns true if the normalized tag name is valid for storage. */
+export function isValidTagName(name: string): boolean {
+  const n = normalizeTagName(name);
+  return n.length > 0 && n.length <= MAX_TAG_NAME_LENGTH;
 }
 
 /**
@@ -24,8 +33,8 @@ export async function getOrCreateTagIds(
     throw new Error(`get_or_create_tag_ids: ${error.message}`);
   }
 
-  for (const row of (rows ?? []) as { id: string; name: string }[]) {
-    idMap.set(row.name, row.id);
+  for (const row of (rows ?? []) as { id: string; tag_name: string }[]) {
+    idMap.set(row.tag_name, row.id);
   }
 
   return idMap;

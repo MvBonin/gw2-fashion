@@ -242,7 +242,7 @@ export interface Database {
         Args: {
           tag_names: string[];
         };
-        Returns: { id: string; name: string }[];
+        Returns: { id: string; tag_name: string }[];
       };
       username_exists: {
         Args: {
@@ -264,6 +264,13 @@ export interface Database {
       };
       update_templates_favourite_buckets: {
         Args: Record<string, never>;
+        Returns: undefined;
+      };
+      update_template_tags: {
+        Args: {
+          p_template_id: string;
+          p_tag_names?: string[] | null;
+        };
         Returns: undefined;
       };
     };

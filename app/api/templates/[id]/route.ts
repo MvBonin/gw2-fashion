@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { getOrCreateTagIds, normalizeTagName } from "@/lib/utils/tags";
+import { normalizeTagName, isValidTagName } from "@/lib/utils/tags";
+
+const MAX_TAGS_PER_TEMPLATE = 20;
 import type { Database } from "@/types/database.types";
 
 type TemplateIdUser = Pick<
@@ -136,26 +138,41 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
     }
 
-    // Sync tags via template_tags (batch)
+    // Sync tags via single RPC (one roundtrip, one transaction)
     if (tags !== undefined) {
-      await supabase.from("template_tags").delete().eq("template_id", id);
-
       const tagNames =
         Array.isArray(tags) && tags.length > 0
           ? [
               ...new Set(
                 tags
-                  .filter((t: unknown) => typeof t === "string" && t.trim().length > 0)
+                  .filter((t: unknown) => typeof t === "string" && isValidTagName(t as string))
                   .map((t: string) => normalizeTagName(t))
               ),
             ]
           : [];
-      const tagIdMap = await getOrCreateTagIds(supabase, tagNames);
-      const templateTagRows = tagNames
-        .map((name) => ({ template_id: id, tag_id: tagIdMap.get(name) }))
-        .filter((row): row is { template_id: string; tag_id: string } => row.tag_id != null);
-      if (templateTagRows.length > 0) {
-        await supabase.from("template_tags").insert(templateTagRows);
+
+      if (tagNames.length > MAX_TAGS_PER_TEMPLATE) {
+        return NextResponse.json(
+          { error: `At most ${MAX_TAGS_PER_TEMPLATE} tags allowed` },
+          { status: 400 }
+        );
+      }
+
+      const { error: rpcError } = await supabase.rpc("update_template_tags", {
+        p_template_id: id,
+        p_tag_names: tagNames,
+      });
+
+      if (rpcError) {
+        const msg = rpcError.message ?? "Failed to save tags";
+        console.error("Error in update_template_tags:", rpcError);
+        if (msg.includes("Unauthorized")) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        if (msg.includes("Forbidden")) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        return NextResponse.json({ error: msg }, { status: 500 });
       }
     }
 

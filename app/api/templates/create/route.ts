@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { normalizeTagName } from "@/lib/utils/tags";
+import { normalizeTagName, isValidTagName } from "@/lib/utils/tags";
 import type { Database } from "@/types/database.types";
 
 export async function POST(request: Request) {
@@ -52,8 +52,22 @@ export async function POST(request: Request) {
 
     const tagNames =
       Array.isArray(tags) && tags.length > 0
-        ? [...new Set(tags.map((t: unknown) => (typeof t === "string" ? normalizeTagName(t) : "")).filter(Boolean))]
+        ? [
+            ...new Set(
+              tags
+                .filter((t: unknown) => typeof t === "string" && isValidTagName(t as string))
+                .map((t: string) => normalizeTagName(t))
+            ),
+          ]
         : [];
+
+    const MAX_TAGS_PER_TEMPLATE = 20;
+    if (tagNames.length > MAX_TAGS_PER_TEMPLATE) {
+      return NextResponse.json(
+        { error: `At most ${MAX_TAGS_PER_TEMPLATE} tags allowed` },
+        { status: 400 }
+      );
+    }
 
     const { data: rows, error: rpcError } = await supabase.rpc("create_template_with_tags", {
       p_user_id: user.id,
