@@ -24,11 +24,10 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            const opts = {
-              ...options,
-              ...(value ? { maxAge: options?.maxAge ?? AUTH_COOKIE_MAX_AGE } : { maxAge: 0 }),
-            };
-            response.cookies.set({ name, value, ...opts });
+            const maxAge: number = value
+              ? (typeof options?.maxAge === "number" ? options.maxAge : AUTH_COOKIE_MAX_AGE)
+              : 0;
+            response.cookies.set({ name, value, ...options, maxAge });
           });
         },
       },

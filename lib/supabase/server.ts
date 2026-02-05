@@ -23,11 +23,10 @@ export const createClient = async (): Promise<SupabaseClient<Database>> => {
         ) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
-              const opts = {
-                ...options,
-                ...(value ? { maxAge: options?.maxAge ?? AUTH_COOKIE_MAX_AGE } : { maxAge: 0 }),
-              };
-              cookieStore.set({ name, value, ...opts });
+              const maxAge: number = value
+                ? (typeof options?.maxAge === "number" ? options.maxAge : AUTH_COOKIE_MAX_AGE)
+                : 0;
+              cookieStore.set({ name, value, ...options, maxAge });
             });
           } catch {
             // Called from Server Component; middleware will refresh session
