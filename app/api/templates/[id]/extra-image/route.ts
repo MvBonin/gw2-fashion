@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { compressScreenshotLosslessWebp } from "@/lib/utils/smartCompressImage";
 import { NextResponse } from "next/server";
 import type { Database } from "@/types/database.types";
 
@@ -8,13 +9,28 @@ type TemplateIdUser = Pick<
   Database["public"]["Tables"]["templates"]["Row"],
   "id" | "user_id"
 >;
-type TemplateExtraImagesInsert = Database["public"]["Tables"]["template_extra_images"]["Insert"];
-type TemplateExtraImagesRow = Database["public"]["Tables"]["template_extra_images"]["Row"];
+type TemplateExtraImagesInsert =
+  Database["public"]["Tables"]["template_extra_images"]["Insert"];
+type TemplateExtraImagesRow =
+  Database["public"]["Tables"]["template_extra_images"]["Row"];
 
 const BUCKET = "template-images";
-const MAX_FILE_BYTES = 3 * 1024 * 1024; // 3MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB upload limit
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+] as const;
+
 const VALID_POSITIONS = [1, 2, 3] as const;
+
+// Always output WebP lossless for screenshots
+const OUTPUT_MIME = "image/webp";
+const OUTPUT_EXT = "webp";
+
+// Resize to fit within this box (keeps screenshots crisp, reduces filesize)
+const MAX_WIDTH_OR_HEIGHT = 2560;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -44,6 +60,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const {
       data: { session },
     } = await supabase.auth.getSession();
+
     if (!session?.access_token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -66,10 +83,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const t = template as TemplateIdUser | null;
     if (fetchError || !t) {
-      return NextResponse.json(
-        { error: "Template not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
 
     if (user.id !== t.user_id) {
@@ -88,26 +102,49 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     const position = positionParam != null ? Number(positionParam) : NaN;
-    if (!Number.isInteger(position) || !VALID_POSITIONS.includes(position as 1 | 2 | 3)) {
+    if (
+      !Number.isInteger(position) ||
+      !VALID_POSITIONS.includes(position as (typeof VALID_POSITIONS)[number])
+    ) {
       return NextResponse.json(
         { error: "Invalid position. Use 1, 2 or 3." },
         { status: 400 }
       );
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!ALLOWED_TYPES.includes(file.type as (typeof ALLOWED_TYPES)[number])) {
       return NextResponse.json(
-        { error: "Invalid file type. Use JPEG, PNG or WebP." },
+        { error: "Invalid file type. Use JPEG, PNG, WebP or AVIF." },
         { status: 400 }
       );
     }
 
     if (file.size > MAX_FILE_BYTES) {
       return NextResponse.json(
-        { error: "File too large. Maximum size is 3MB." },
+        { error: "File too large. Maximum size is 10MB." },
         { status: 400 }
       );
     }
+
+    // ---- Always convert to WebP lossless & fit inside MAX_WIDTH_OR_HEIGHT ----
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    let buffer: Buffer;
+    try {
+      const result = await compressScreenshotLosslessWebp(
+        fileBuffer,
+        file.name,
+        { maxWidthOrHeight: MAX_WIDTH_OR_HEIGHT, effort: 6 }
+      );
+      buffer = result.buffer;
+    } catch (err) {
+      console.error("Image processing failed:", err);
+      return NextResponse.json(
+        { error: "Image processing failed" },
+        { status: 500 }
+      );
+    }
+    // ------------------------------------------------------------------------
 
     // If slot already has an image, remove old file from storage before uploading new one
     const { data: existingRow } = await supabase
@@ -125,15 +162,15 @@ export async function POST(request: Request, { params }: RouteParams) {
       }
     }
 
-    const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-    const filename = `extra_${position}_${crypto.randomUUID()}.${ext}`;
+    const filename = `extra_${position}_${crypto.randomUUID()}.${OUTPUT_EXT}`;
     const path = `${user.id}/${templateId}/${filename}`;
 
     const { error: uploadError } = await storageClient.storage
       .from(BUCKET)
-      .upload(path, file, {
-        contentType: file.type,
+      .upload(path, buffer, {
+        contentType: OUTPUT_MIME,
         upsert: true,
+        cacheControl: "31536000",
       });
 
     if (uploadError) {
@@ -218,10 +255,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     const t = template as TemplateIdUser | null;
     if (fetchError || !t) {
-      return NextResponse.json(
-        { error: "Template not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
 
     if (user.id !== t.user_id) {
@@ -231,7 +265,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { searchParams } = new URL(request.url);
     const positionParam = searchParams.get("position");
     const position = positionParam != null ? Number(positionParam) : NaN;
-    if (!Number.isInteger(position) || !VALID_POSITIONS.includes(position as 1 | 2 | 3)) {
+    if (
+      !Number.isInteger(position) ||
+      !VALID_POSITIONS.includes(position as (typeof VALID_POSITIONS)[number])
+    ) {
       return NextResponse.json(
         { error: "Invalid position. Use 1, 2 or 3." },
         { status: 400 }

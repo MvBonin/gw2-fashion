@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import imageCompression from "browser-image-compression";
 
 interface ExtraImageSlotProps {
   templateId: string;
@@ -12,8 +11,8 @@ interface ExtraImageSlotProps {
   onRemove: () => void;
 }
 
-const MAX_FILE_BYTES = 3 * 1024 * 1024; // 3MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB (server compresses)
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 export default function ExtraImageSlot({
   templateId,
@@ -32,25 +31,18 @@ export default function ExtraImageSlot({
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Use JPEG, PNG or WebP only.");
+      setError("Use JPEG, PNG, WebP or AVIF only.");
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      setError("Max. 3 MB.");
+      setError("Max. 10 MB.");
       return;
     }
 
     setUploading(true);
     try {
-      const compressed = await imageCompression(file, {
-        maxSizeMB: 2,
-        maxWidthOrHeight: 1920,
-        initialQuality: 0.95,
-        useWebWorker: true,
-      });
-
       const formData = new FormData();
-      formData.append("file", compressed);
+      formData.append("file", file);
       formData.append("position", String(position));
 
       const res = await fetch(`/api/templates/${templateId}/extra-image`, {

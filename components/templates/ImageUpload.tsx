@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef } from "react";
 import Cropper, { type Area } from "react-easy-crop";
-import imageCompression from "browser-image-compression";
 import Image from "next/image";
 import { getCroppedImg, TEMPLATE_IMAGE_ASPECT } from "@/lib/utils/cropImage";
 import "react-easy-crop/react-easy-crop.css";
@@ -62,22 +61,16 @@ export default function ImageUpload({
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
       const file = new File([croppedBlob], "image.jpg", { type: "image/jpeg" });
-      const compressed = await imageCompression(file, {
-        maxSizeMB: 2,
-        maxWidthOrHeight: 1920,
-        initialQuality: 0.95,
-        useWebWorker: true,
-      });
 
       if (onFileReady) {
-        onFileReady(compressed);
+        onFileReady(file);
         closeCrop();
         return;
       }
 
       if (!templateId || !onUploadSuccess) return;
       const formData = new FormData();
-      formData.append("file", compressed);
+      formData.append("file", file);
 
       const res = await fetch(`/api/templates/${templateId}/image`, {
         method: "POST",
@@ -116,6 +109,7 @@ export default function ImageUpload({
               fill
               className="object-contain"
               sizes="(max-width: 768px) 100vw, 672px"
+              quality={100}
             />
           </div>
         )}

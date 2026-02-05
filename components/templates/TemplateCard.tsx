@@ -86,7 +86,8 @@ export default function TemplateCard({
             alt={name}
             fill
             className="object-cover"
-            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 66vw, (max-width: 1024px) 50vw, 400px"
+            quality={100}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-base-content/30">

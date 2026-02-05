@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { compressScreenshotLosslessWebp } from "@/lib/utils/smartCompressImage";
 import { NextResponse } from "next/server";
 import type { Database } from "@/types/database.types";
 
@@ -11,8 +12,8 @@ type TemplateIdUser = Pick<
 type TemplatesUpdate = Database["public"]["Tables"]["templates"]["Update"];
 
 const BUCKET = "template-images";
-const MAX_FILE_BYTES = 3 * 1024 * 1024; // 3MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB (compression runs server-side)
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -80,26 +81,42 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: "Invalid file type. Use JPEG, PNG or WebP." },
+        { error: "Invalid file type. Use JPEG, PNG, WebP or AVIF." },
         { status: 400 }
       );
     }
 
     if (file.size > MAX_FILE_BYTES) {
       return NextResponse.json(
-        { error: "File too large. Maximum size is 3MB." },
+        { error: "File too large. Maximum size is 10MB." },
         { status: 400 }
       );
     }
 
-    const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    let buffer: Buffer;
+    let mime: string;
+    let ext: string;
+    try {
+      const result = await compressScreenshotLosslessWebp(fileBuffer, file.name);
+      buffer = result.buffer;
+      mime = result.mime;
+      ext = result.ext;
+    } catch (err) {
+      console.error("Image processing failed:", err);
+      return NextResponse.json(
+        { error: "Image processing failed" },
+        { status: 500 }
+      );
+    }
+
     const filename = `${crypto.randomUUID()}.${ext}`;
     const path = `${user.id}/${templateId}/${filename}`;
 
     const { error: uploadError } = await storageClient.storage
       .from(BUCKET)
-      .upload(path, file, {
-        contentType: file.type,
+      .upload(path, buffer, {
+        contentType: mime,
         upsert: true,
       });
 

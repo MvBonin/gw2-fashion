@@ -139,7 +139,8 @@ export default function TemplateExtraImagesGallery({
             alt={currentIndex === 0 ? templateName : `${templateName} – view ${currentIndex + 1}`}
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="(max-width: 768px) 100vw, 1024px"
+            quality={100}
             priority={currentIndex === 0}
           />
         </button>
@@ -201,7 +202,8 @@ export default function TemplateExtraImagesGallery({
                   alt={idx === 0 ? templateName : `${templateName} – view ${idx + 1}`}
                   fill
                   className="object-cover"
-                  sizes="80px"
+                  sizes="160px"
+                  quality={100}
                 />
               </button>
             ))}
@@ -241,7 +243,8 @@ export default function TemplateExtraImagesGallery({
                 alt={lightboxIndex === 0 ? templateName : `${templateName} – view ${lightboxIndex + 1}`}
                 fill
                 className="object-contain"
-                sizes="(max-width: 896px) 100vw, 896px"
+                sizes="100vw"
+                quality={100}
               />
             </div>
             {showNav && (

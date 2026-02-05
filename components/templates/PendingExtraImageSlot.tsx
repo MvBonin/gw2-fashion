@@ -2,10 +2,9 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import imageCompression from "browser-image-compression";
 
-const MAX_FILE_BYTES = 3 * 1024 * 1024; // 3MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB (server compresses)
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 interface PendingExtraImageSlotProps {
   position: 1 | 2 | 3;
@@ -36,23 +35,17 @@ export default function PendingExtraImageSlot({
     e.target.value = "";
     if (!rawFile || !rawFile.type.startsWith("image/")) return;
     if (!ALLOWED_TYPES.includes(rawFile.type)) {
-      setLocalError("Use JPEG, PNG or WebP only.");
+      setLocalError("Use JPEG, PNG, WebP or AVIF only.");
       return;
     }
     if (rawFile.size > MAX_FILE_BYTES) {
-      setLocalError("Max. 3 MB.");
+      setLocalError("Max. 10 MB.");
       return;
     }
 
     setLoading(true);
     try {
-      const compressed = await imageCompression(rawFile, {
-        maxSizeMB: 2,
-        maxWidthOrHeight: 1920,
-        initialQuality: 0.95,
-        useWebWorker: true,
-      });
-      onFileSelect(compressed);
+      onFileSelect(rawFile);
     } catch {
       setLocalError("Image could not be processed.");
     } finally {
