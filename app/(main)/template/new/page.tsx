@@ -87,16 +87,24 @@ export default function NewTemplatePage() {
     setLoading(true);
 
     try {
-      const SESSION_CHECK_TIMEOUT_MS = 8000;
-      const userResult = await Promise.race([
-        supabase.auth.getUser(),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("SESSION_TIMEOUT")),
-            SESSION_CHECK_TIMEOUT_MS
-          )
-        ),
-      ]);
+      // Session check with generous timeout (auth can be slow on token refresh / cold start)
+      const SESSION_CHECK_TIMEOUT_MS = 25_000;
+      let userResult: Awaited<ReturnType<typeof supabase.auth.getUser>>;
+      try {
+        userResult = await Promise.race([
+          supabase.auth.getUser(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("SESSION_TIMEOUT")), SESSION_CHECK_TIMEOUT_MS)
+          ),
+        ]);
+      } catch (sessionErr) {
+        if (sessionErr instanceof Error && sessionErr.message === "SESSION_TIMEOUT") {
+          setLoading(false);
+          setError("Session check timed out. Please refresh the page and try again.");
+          return;
+        }
+        throw sessionErr;
+      }
 
       const {
         data: { user },
@@ -221,9 +229,7 @@ export default function NewTemplatePage() {
       router.push(`/template/${data.slug}`);
     } catch (err) {
       console.error("Error creating template:", err);
-      if (err instanceof Error && err.message === "SESSION_TIMEOUT") {
-        setError("Session check timed out. Please refresh the page and try again.");
-      } else if (err instanceof Error && err.name === "AbortError") {
+      if (err instanceof Error && err.name === "AbortError") {
         setError("Request took too long. Please try again.");
       } else {
         setError("An unexpected error occurred");
