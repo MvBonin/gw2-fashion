@@ -1,6 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 import { compressScreenshotLosslessWebp } from "@/lib/utils/smartCompressImage";
 import { NextResponse } from "next/server";
 import type { Database } from "@/types/database.types";
@@ -46,7 +44,7 @@ function getStoragePathFromPublicUrl(publicUrl: string): string | null {
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { id: templateId } = await params;
-    const supabase = await createServerClient();
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -56,24 +54,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const storageClient = createClient<Database>(
-      getSupabaseUrl(),
-      getSupabaseAnonKey(),
-      {
-        global: {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      }
-    );
 
     const { data: template, error: fetchError } = await supabase
       .from("templates")
@@ -158,14 +138,14 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (existing?.image_url) {
       const oldPath = getStoragePathFromPublicUrl(existing.image_url);
       if (oldPath) {
-        await storageClient.storage.from(BUCKET).remove([oldPath]);
+        await supabase.storage.from(BUCKET).remove([oldPath]);
       }
     }
 
     const filename = `extra_${position}_${crypto.randomUUID()}.${OUTPUT_EXT}`;
     const path = `${user.id}/${templateId}/${filename}`;
 
-    const { error: uploadError } = await storageClient.storage
+    const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(path, buffer, {
         contentType: OUTPUT_MIME,
@@ -183,7 +163,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const {
       data: { publicUrl },
-    } = storageClient.storage.from(BUCKET).getPublicUrl(path);
+    } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
     const row: TemplateExtraImagesInsert = {
       template_id: templateId,
@@ -219,7 +199,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id: templateId } = await params;
-    const supabase = await createServerClient();
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -229,23 +209,6 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const storageClient = createClient<Database>(
-      getSupabaseUrl(),
-      getSupabaseAnonKey(),
-      {
-        global: {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      }
-    );
 
     const { data: template, error: fetchError } = await supabase
       .from("templates")
@@ -292,7 +255,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     const storagePath = getStoragePathFromPublicUrl(row.image_url);
     if (storagePath) {
-      await storageClient.storage.from(BUCKET).remove([storagePath]);
+      await supabase.storage.from(BUCKET).remove([storagePath]);
     }
 
     const { error: deleteError } = await supabase

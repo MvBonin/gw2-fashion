@@ -1,6 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 import { compressScreenshotLosslessWebp } from "@/lib/utils/smartCompressImage";
 import { NextResponse } from "next/server";
 import type { Database } from "@/types/database.types";
@@ -22,7 +20,7 @@ interface RouteParams {
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { id: templateId } = await params;
-    const supabase = await createServerClient();
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -32,24 +30,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Client mit User-JWT für Storage, damit RLS (auth.uid()) greift
-    const storageClient = createClient<Database>(
-      getSupabaseUrl(),
-      getSupabaseAnonKey(),
-      {
-        global: {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      }
-    );
 
     const { data, error: fetchError } = await supabase
       .from("templates")
@@ -113,7 +93,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const filename = `${crypto.randomUUID()}.${ext}`;
     const path = `${user.id}/${templateId}/${filename}`;
 
-    const { error: uploadError } = await storageClient.storage
+    const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(path, buffer, {
         contentType: mime,
@@ -130,7 +110,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const {
       data: { publicUrl },
-    } = storageClient.storage.from(BUCKET).getPublicUrl(path);
+    } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
     const updatePayload: TemplatesUpdate = { image_url: publicUrl };
     const { error: updateError } = await supabase

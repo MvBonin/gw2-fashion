@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import TagInput from "@/components/templates/TagInput";
 import ImageUpload from "@/components/templates/ImageUpload";
 import PendingExtraImageSlot from "@/components/templates/PendingExtraImageSlot";
@@ -14,7 +13,6 @@ const EXTRA_POSITIONS: ExtraPosition[] = [1, 2, 3];
 
 export default function NewTemplatePage() {
   const router = useRouter();
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,34 +85,6 @@ export default function NewTemplatePage() {
     setLoading(true);
 
     try {
-      // Session check with generous timeout (auth can be slow on token refresh / cold start)
-      const SESSION_CHECK_TIMEOUT_MS = 25_000;
-      let userResult: Awaited<ReturnType<typeof supabase.auth.getUser>>;
-      try {
-        userResult = await Promise.race([
-          supabase.auth.getUser(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("SESSION_TIMEOUT")), SESSION_CHECK_TIMEOUT_MS)
-          ),
-        ]);
-      } catch (sessionErr) {
-        if (sessionErr instanceof Error && sessionErr.message === "SESSION_TIMEOUT") {
-          setLoading(false);
-          setError("Session check timed out. Please refresh the page and try again.");
-          return;
-        }
-        throw sessionErr;
-      }
-
-      const {
-        data: { user },
-      } = userResult;
-
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
       const createAbort = new AbortController();
       const createTimeout = setTimeout(() => createAbort.abort(), 30_000);
 
@@ -152,6 +122,10 @@ export default function NewTemplatePage() {
       if (!response.ok) {
         console.log("[create] client: error", data.error);
         setLoading(false);
+        if (response.status === 401) {
+          router.push("/login");
+          return;
+        }
         setError(data.error || "Failed to create template");
         return;
       }

@@ -7,8 +7,6 @@ import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
 /** Same as middleware: persistent cookie lifetime so server-side session refresh keeps cookies across browser restarts. */
 const AUTH_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
 
-type CookieOptions = { path?: string; maxAge?: number };
-
 export const createClient = async (): Promise<SupabaseClient<Database>> => {
   const cookieStore = await cookies();
 
@@ -17,23 +15,20 @@ export const createClient = async (): Promise<SupabaseClient<Database>> => {
     getSupabaseAnonKey(),
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
+        setAll(
+          cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]
+        ) {
           try {
-            const opts = {
-              ...options,
-              ...(value ? { maxAge: options.maxAge ?? AUTH_COOKIE_MAX_AGE } : { maxAge: 0 }),
-            };
-            cookieStore.set({ name, value, ...opts });
-          } catch {
-            // Called from Server Component; middleware will refresh session
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: "", ...options, maxAge: 0 });
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const opts = {
+                ...options,
+                ...(value ? { maxAge: options?.maxAge ?? AUTH_COOKIE_MAX_AGE } : { maxAge: 0 }),
+              };
+              cookieStore.set({ name, value, ...opts });
+            });
           } catch {
             // Called from Server Component; middleware will refresh session
           }
