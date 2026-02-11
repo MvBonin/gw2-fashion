@@ -127,7 +127,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     switch (sortOption) {
       case "trending":
         query = query
-          .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
           .order("trending_score", { ascending: false });
         break;
       case "popular":
